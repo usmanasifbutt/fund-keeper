@@ -1,71 +1,85 @@
 # Keeper
 
-A phone app for tracking Pakistani mutual funds. Open it to see today's profit or loss, total profit or loss and the latest returns for every fund you hold, priced from MUFAP's daily data.
+**All my mutual funds in one place.** Keeper is a small phone app that shows the daily and total profit/loss of Pakistani mutual funds, so I don't have to log in to a separate app for every fund company.
 
-- **Installable:** add it to your home screen on Android or iPhone and it opens like an app.
-- **No server, no account:** the app reads [MUFAP's Performance Summary](https://www.mufap.com.pk/Industry/IndustryStatDaily?tab=1) directly from your phone.
-- **Private:** your holdings are stored only in your phone's browser storage. This repo contains code only, so it can be public.
+It reads the public daily prices from [MUFAP](https://www.mufap.com.pk/Industry/IndustryStatDaily?tab=1) (Mutual Funds Association of Pakistan). Your holdings stay on your phone.
 
-## How the numbers are worked out
+**Live demo with sample data:** <https://usmanasifbutt.github.io/fund-keeper/#demo>
 
-| Figure | Formula |
+<p align="center">
+  <img src="docs/images/home.png" alt="Keeper home screen: today's profit/loss, portfolio value and the first fund card" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/images/home-dark.png" alt="Keeper home screen in dark mode" width="300">
+</p>
+
+> Keeper is a personal tracking tool, **not investment advice**. See [Terms](docs/TERMS.md).
+
+## What it shows
+
+| | |
 |---|---|
-| Value | units × NAV |
-| Today | units × (NAV − NAV ÷ (1 + 1-day return)) |
-| Total P/L | value − amount invested |
+| <img src="docs/images/summary.png" alt="Summary card" width="320"> | **Today, across all funds.** Today's profit/loss, how many funds went up or down, total value, amount invested and total profit/loss. |
+| <img src="docs/images/funds.png" alt="Fund card" width="320"> | **One card per fund.** Swipe sideways. Each card shows today's change, value, units, total profit/loss and the fund's month, year-to-date and 1-year returns. Cards can be reordered. |
+| <img src="docs/images/share-by-fund.png" alt="Share by fund donut chart" width="320"> | **Share by fund.** How your money is split, by amount invested or by current value. |
+| <img src="docs/images/by-category.png" alt="Profit and loss by category" width="320"> | **By category.** Equity, Money Market, Income and Asset Allocation, each with today's and total profit/loss. |
+| <img src="docs/images/chart.png" alt="Profit/loss over time chart" width="320"> | **Profit/loss over time.** 1 month to 1 year. Green above Rs 0, red below. Loads only when you scroll to it. |
 
-MUFAP reports money market and income fund returns as annual rates. Keeper divides the 1-day rate by 365, MUFAP's own convention. For example, Meezan Cash Fund at 11.06% gives 0.0303% for the day, which matches its NAV moving from 53.0734 to 53.0895.
+## What it tracks and stores
 
-Prices refresh when you open the app (at most every 30 minutes) or when you tap refresh.
+For each fund you enter:
 
-## Run it on your computer
+- **Fund**, picked from MUFAP's list of about 550 funds
+- **Units** you hold
+- **Amount invested** in rupees
+- **First invested date** (optional)
 
-Needs Node 20 or newer.
+That's all. It's saved in your phone's browser storage and **never leaves your phone**. There are no accounts, no server and no analytics. Each day's portfolio total is also saved on the phone to draw the chart. Details: [Privacy](docs/PRIVACY.md).
+
+Prices come from MUFAP's public Performance Summary, fetched when you open the app (at most every 30 minutes).
+
+## Use it
+
+1. Open <https://usmanasifbutt.github.io/fund-keeper/> on your phone.
+2. **Add to Home screen.** Android Chrome: menu ⋮ → *Install app*. iPhone Safari: Share → *Add to Home Screen*.
+3. Tap **Add your funds**, search for each fund and enter your units and the amount invested.
+
+Full guide, including buying more, dividends and backups: **[docs/USAGE.md](docs/USAGE.md)**.
+
+<p align="center">
+  <img src="docs/images/edit-holdings.png" alt="Holdings editor" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/images/backup.png" alt="Backup screen" width="300">
+</p>
+
+## Run it yourself
+
+Needs [Node.js](https://nodejs.org) 20 or newer.
 
 ```bash
+git clone https://github.com/usmanasifbutt/fund-keeper.git
+cd fund-keeper
 npm install
 npm run dev
 ```
 
-Open the address it prints. `npm run dev -- --host` also shows a network address you can open on your phone if it's on the same Wi-Fi.
+Open the address it prints. Add `#demo` to the end of the address to see sample data.
 
-Other commands:
+| Command | What it does |
+|---|---|
+| `npm test` | Runs the tests |
+| `npm run build` | Builds the app into `dist/` |
+| `npm run preview` | Serves the built app |
+| `npm run screenshots` | Re-captures the images in `docs/images` from the demo (needs `npm run preview` running and Chrome installed) |
 
-```bash
-npm test          # parser and calculation tests
-npm run build     # production build into dist/
-npm run preview   # serve the production build
-npm run icons     # redraw the app icons into public/
-```
+**Host your own copy (free):** fork this repo, then go to *Settings → Pages* and set *Source* to **GitHub Actions**. Every push to `main` or `master` publishes the app to `https://<your-username>.github.io/fund-keeper/`.
 
-## Put it on your phone (free, via GitHub Pages)
+## Docs
 
-1. Create a **public** repo on GitHub, for example `fund-keeper`, and push this folder to it.
-2. On GitHub, open the repo's **Settings → Pages** and set **Source** to **GitHub Actions**.
-3. The **Deploy to GitHub Pages** workflow runs on every push to `main` or `master`. When it finishes, your app is at `https://<your-username>.github.io/<repo-name>/`.
-4. Open that address on your phone:
-   - **Android (Chrome):** menu ⋮ → **Add to Home screen** (or **Install app**).
-   - **iPhone (Safari):** Share → **Add to Home Screen**.
+- [How to use Keeper](docs/USAGE.md)
+- [How the numbers are worked out](docs/HOW-IT-WORKS.md)
+- [Privacy](docs/PRIVACY.md)
+- [Terms and disclaimer](docs/TERMS.md)
 
-## Using it
+## Disclaimer
 
-- **Add funds:** tap **Add your funds**, search (e.g. "meezan cash"), pick the fund, then enter your units and the total amount you've paid in.
-- **Bought more:** Edit holdings → add the new units and the new amount to both numbers.
-- **Dividend paid as units:** update Units from your statement and leave Invested unchanged.
-- **Backup:** Backup → **Save backup file** after you change your holdings. If the phone's browser data is cleared, or you change phones, use **Restore from file**.
-
-## Project layout
-
-```
-src/
-  lib/mufap.ts       reads and parses MUFAP's Performance Summary
-  lib/calc.ts        value, day change and P/L
-  lib/store.ts       browser storage, backup and restore
-  components/        screens: summary, fund cards, holdings editor, backup
-public/              app icons
-legacy/              the earlier Google Sheets / Apps Script version
-```
-
-## If prices stop loading
-
-MUFAP currently lets other sites read its page. If it stops, the app shows an error and keeps the last saved prices. The fix would be a small scheduled GitHub Action that copies the public MUFAP data into this repo for the app to read.
+Keeper is a personal project, built so I can see all my funds in one place without opening several fund company apps. It does **not** give investment, financial or tax advice, and it is not affiliated with MUFAP, MCB Funds, Al Meezan or any other fund manager. Prices can be late or wrong. Always check your official statements before making decisions. See [Terms](docs/TERMS.md).

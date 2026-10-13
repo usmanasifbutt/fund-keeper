@@ -13,7 +13,15 @@ const dayNum = (iso: string) => Date.parse(`${iso}T00:00:00Z`) / 86400000;
 
 /** Total profit/loss over time: recorded days (solid) plus estimates from MUFAP's period returns (dashed). */
 export default function PnlChart({ positions, snapshots }: { positions: Position[]; snapshots: Snapshot[] }) {
-  const all = useMemo(() => pnlHistory(estimatePast(positions), snapshots), [positions, snapshots]);
+  const all = useMemo(() => {
+    const history = pnlHistory(estimatePast(positions), snapshots);
+    if (!positions.length || positions.some(p => !p.fund)) return history;
+    // Always end on today's actual figure, even before it has been recorded.
+    const date = positions.reduce((d, p) => (p.fund!.date > d ? p.fund!.date : d), '');
+    const pnl = positions.reduce((s, p) => s + p.value - p.holding.invested, 0);
+    return [...history.filter(p => p.date !== date), { date, pnl, estimated: false }]
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [positions, snapshots]);
   const [range, setRange] = useState('3M');
   const uid = useId().replace(/:/g, '');
   const [active, setActive] = useState<number | null>(null);
@@ -75,7 +83,7 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
       </div>
       <div className="readout" aria-live="polite">
         <b className={tone(shown.pnl)}>{rs(shown.pnl, true)}</b>
-        <span>{dateLabel(shown.date)} {shown.date.slice(0, 4)} · {shown.estimated ? 'estimated' : 'recorded'}</span>
+        <span>{dateLabel(shown.date)} {shown.date.slice(0, 4)} · {shown.estimated ? 'estimated' : 'actual'}</span>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img"
         aria-label={`Total profit and loss from ${dateLabel(pts[0].date)} to ${dateLabel(pts[pts.length - 1].date)}, between ${rs(Math.min(...values), true)} and ${rs(Math.max(...values), true)}`}

@@ -12,6 +12,7 @@ import AllocationPie from './components/AllocationPie';
 import LazySection from './components/LazySection';
 import HoldingsEditor from './components/HoldingsEditor';
 import BackupView from './components/BackupView';
+import { DEMO_HOLDINGS, isDemo } from './demo';
 
 // Loaded in its own file, only when the chart is about to scroll into view.
 const PnlChart = lazy(() => import('./components/PnlChart'));
@@ -20,7 +21,8 @@ const STALE_MS = 30 * 60 * 1000;
 type View = 'home' | 'edit' | 'backup';
 
 export default function App() {
-  const [holdings, setHoldings] = useState<Holding[]>(loadHoldings);
+  const [demo] = useState(isDemo);
+  const [holdings, setHoldings] = useState<Holding[]>(() => (isDemo() ? DEMO_HOLDINGS : loadHoldings()));
   const [market, setMarket] = useState<Market | null>(loadMarket);
   const [snapshots, setSnapshots] = useState(loadSnapshots);
   const [loading, setLoading] = useState(false);
@@ -63,19 +65,19 @@ export default function App() {
 
   // Keep one value record per NAV date for the chart, once every held fund has a price.
   useEffect(() => {
-    if (!holdings.length || !portfolio.date || portfolio.positions.some(p => !p.fund)) return;
+    if (demo || !holdings.length || !portfolio.date || portfolio.positions.some(p => !p.fund)) return;
     setSnapshots(recordSnapshot({ date: portfolio.date, value: Math.round(portfolio.value), invested: Math.round(portfolio.invested) }));
   }, [holdings.length, portfolio]);
 
   function onSaveHoldings(next: Holding[]) {
-    saveHoldings(next);
+    if (!demo) saveHoldings(next);
     setHoldings(next);
     setView('home');
   }
 
   function onReorder(fundIds: string[]) {
     const next = fundIds.map(id => holdings.find(h => h.fundId === id)).filter((h): h is Holding => !!h);
-    saveHoldings(next);
+    if (!demo) saveHoldings(next);
     setHoldings(next);
   }
 
@@ -115,6 +117,12 @@ export default function App() {
       </header>
 
       <main className="content">
+        {demo && (
+          <p className="demo-banner">
+            Demo with sample holdings. Nothing you change here is saved.{' '}
+            <a href="./" onClick={e => { e.preventDefault(); location.hash = ''; location.reload(); }}>Exit demo</a>
+          </p>
+        )}
         <p className={`status ${error ? 'status-err' : ''}`} role="status">
           {error ?? (loading && !market ? 'Loading prices from MUFAP…' : market
             ? `Prices from MUFAP · updated ${timeAgo(market.fetchedAt)}${loading ? ' · refreshing…' : ''}`

@@ -235,8 +235,8 @@ input[type="number"] { font-family: var(--mono); }
 .nav-btn:disabled { opacity: .35; cursor: default; }
 
 /* Share by fund (donut) */
-.pie-wrap { display: grid; grid-template-columns: minmax(130px, 170px) minmax(0, 1fr); gap: 16px; align-items: center; }
-@media (max-width: 380px) { .pie-wrap { grid-template-columns: 1fr; justify-items: center; } .pie { max-width: 170px; } }
+.pie-wrap { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 20px; align-items: center; }
+@media (max-width: 560px) { .pie-wrap { grid-template-columns: 1fr; justify-items: center; gap: 12px; } .pie { max-width: 180px; } }
 .pie { width: 100%; height: auto; display: block; overflow: visible; }
 .pie-track { fill: none; stroke: var(--line); stroke-width: 18; }
 .pie-slice { cursor: pointer; transition: stroke-width .15s; }
@@ -264,3 +264,7 @@ input[type="date"] {
   font-size: 16px; min-height: 44px;
 }
 .since { font-size: .78rem; color: var(--muted); }
+
+/* Demo mode */
+.demo-banner { font-size: .82rem; padding: 8px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); }
+.demo-banner a { color: inherit; font-weight: 600; }
