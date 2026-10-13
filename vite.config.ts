@@ -30,8 +30,17 @@ export default defineConfig({
       },
       workbox: {
         // Only the app itself is cached; MUFAP data is cached by the app in local storage.
-        globPatterns: ['**/*.{js,css,html,svg,png}'],
-        navigateFallback: 'index.html',
+        // The page is not precached: it's fetched network-first, so a normal refresh picks up a new
+        // version straight away, and the last copy is used only when offline.
+        globPatterns: ['**/*.{js,css,svg,png}'],
+        navigateFallback: null,
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: { cacheName: 'keeper-pages', networkTimeoutSeconds: 4 },
+          },
+        ],
       },
     }),
   ],
