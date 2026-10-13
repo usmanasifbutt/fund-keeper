@@ -22,6 +22,13 @@ type View = 'home' | 'edit' | 'backup';
 
 export default function App() {
   const [demo] = useState(isDemo);
+
+  // Adding or removing #demo in the address bar doesn't reload the page, so reload to switch modes.
+  useEffect(() => {
+    const onHash = () => { if (isDemo() !== demo) location.reload(); };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [demo]);
   const [holdings, setHoldings] = useState<Holding[]>(() => (isDemo() ? DEMO_HOLDINGS : loadHoldings()));
   const [market, setMarket] = useState<Market | null>(loadMarket);
   const [snapshots, setSnapshots] = useState(loadSnapshots);
