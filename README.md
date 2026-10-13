@@ -4,7 +4,10 @@
 
 It reads the public daily prices from [MUFAP](https://www.mufap.com.pk/Industry/IndustryStatDaily?tab=1) (Mutual Funds Association of Pakistan). Your holdings stay on your phone.
 
-**Live demo with sample data:** <https://usmanasifbutt.github.io/fund-keeper/#demo>
+| | |
+|---|---|
+| 📱 **Open the app** | [usmanasifbutt.github.io/fund-keeper](https://usmanasifbutt.github.io/fund-keeper/) |
+| 👀 **Try the demo** (sample data, nothing saved) | [usmanasifbutt.github.io/fund-keeper/#demo](https://usmanasifbutt.github.io/fund-keeper/#demo) |
 
 <p align="center">
   <img src="docs/images/home.png" alt="Keeper home screen: today's profit/loss, portfolio value and the first fund card" width="300">
