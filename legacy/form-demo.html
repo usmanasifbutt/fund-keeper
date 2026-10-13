@@ -1,0 +1,251 @@
+<title>Holdings Form Demo</title>
+<style>
+:root{
+  --bg:#f5f6f8; --surface:#fff; --fg:#17202e; --muted:#5b6578; --line:#dde1e8;
+  --accent:#1f4f8f; --accent-fg:#fff; --accent-soft:#e6edf7;
+  --gain:#0f7a52; --loss:#b3261e; --warn:#8a5a00; --warn-soft:#fbf1dc;
+  --font:"Segoe UI",Roboto,system-ui,-apple-system,sans-serif;
+  --mono:Consolas,"SF Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f141c; --surface:#171e29; --fg:#e6eaf1; --muted:#9aa4b6; --line:#2a3342;
+  --accent:#8db4ee; --accent-fg:#0f141c; --accent-soft:#1c2a40;
+  --gain:#4cc28f; --loss:#f08a80; --warn:#e6b450; --warn-soft:#2e2615; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141c; --surface:#171e29; --fg:#e6eaf1; --muted:#9aa4b6; --line:#2a3342;
+  --accent:#8db4ee; --accent-fg:#0f141c; --accent-soft:#1c2a40;
+  --gain:#4cc28f; --loss:#f08a80; --warn:#e6b450; --warn-soft:#2e2615; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--font)}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 120px;display:grid;gap:16px}
+h1{margin:0;font-size:1.5rem}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
+.gain{color:var(--gain)} .loss{color:var(--loss)}
+.summary{display:flex;flex-wrap:wrap;gap:8px 28px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.summary div{display:grid}
+.summary span{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.summary b{font-size:1.05rem}
+.rows{display:grid;gap:12px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:10px}
+.row.invalid{border-color:var(--loss)}
+.row-top{display:flex;gap:8px;align-items:start}
+.combo{position:relative;flex:1;min-width:0}
+label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:3px}
+input{width:100%;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--fg)}
+input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input.n{font-family:var(--mono)}
+.list{position:absolute;z-index:5;left:0;right:0;top:100%;margin:4px 0 0;padding:4px;list-style:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgb(0 0 0 / .15);max-height:300px;overflow:auto}
+.list li{padding:7px 9px;border-radius:6px;cursor:pointer;display:grid}
+.list li small{color:var(--muted)}
+.list li.on,.list li:hover{background:var(--accent-soft)}
+.meta{font-size:.82rem;color:var(--muted)}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.calc{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:.88rem}
+button{font:inherit;font-weight:600;border-radius:8px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+button.ghost{border-color:transparent;background:transparent;color:var(--muted);padding:6px 8px;margin-top:20px}
+button:disabled{opacity:.55;cursor:default}
+.add{justify-self:start}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
+.bar-in{max-width:720px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.status{flex:1;min-width:160px;font-size:.88rem}
+.status.err{color:var(--loss)} .status.ok{color:var(--gain)}
+.chip{display:inline-block;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
+@media (max-width:420px){.fields{grid-template-columns:1fr}}
+</style>
+<div class="wrap">
+  <div>
+    <h1>Your holdings</h1>
+    <div class="muted small" id="sub">Loading funds from MUFAP…</div>
+  </div>
+  <div class="summary" id="summary" hidden>
+    <div><span>Value</span><b class="num" id="s-val"></b></div>
+    <div><span>Invested</span><b class="num" id="s-inv"></b></div>
+    <div><span>Total P/L</span><b class="num" id="s-tot"></b></div>
+  </div>
+  <div class="rows" id="rows"></div>
+  <button class="add" id="add" type="button" disabled>+ Add fund</button>
+  <p class="muted small">Units: copy from your confirmation SMS or statement. Invested: the total you've paid into that fund, including any front-end load. When you buy more, add the new units and the new amount to both numbers.</p>
+</div>
+
+<div class="bar"><div class="bar-in">
+  <div class="status" id="status" role="status"></div>
+  <button id="report" type="button" disabled>Send report now</button>
+  <button id="save" class="primary" type="button" disabled>Save</button>
+</div></div>
+
+<script>
+(function(){
+  const live = typeof google !== 'undefined' && google.script && google.script.run;
+  let FUNDS = [], BY_ID = {}, dirty = false, rowSeq = 0;
+
+  // Sample data for previewing this file outside Apps Script.
+  const DEMO = {
+    refreshedAt: '13 Oct, 9:02 pm (demo data)',
+    funds: [
+      ['12733','Alhamra Islamic Stock Fund','MCB Investment Management Limited','Shariah Compliant Equity',28.61,28.61,'2026-10-12'],
+      ['10001','Meezan Cash Fund','Al Meezan Investment Management Limited','Shariah Compliant Money Market',53.0734,53.0734,'2026-10-12'],
+      ['10002','Meezan Islamic Fund','Al Meezan Investment Management Limited','Shariah Compliant Equity',120.55,120.55,'2026-10-12'],
+      ['10003','Alhamra Islamic Money Market Fund','MCB Investment Management Limited','Shariah Compliant Money Market',101.21,101.21,'2026-10-12'],
+      ['14750','786 Islamic Money Market Fund','786 Investments Limited','Shariah Compliant Money Market',103.3938,103.3938,'2026-10-13']
+    ],
+    holdings: [{fundId:'12733',units:3500,invested:95000},{fundId:'10001',units:1900,invested:100000}]
+  };
+
+  const $ = id => document.getElementById(id);
+  const rowsEl = $('rows');
+  const fmtRs = (n, signed) => { const r = Math.round(Math.abs(n)); const s = String(r).replace(/\B(?=(\d{3})+(?!\d))/g, ','); return (n < 0 && r ? '-' : signed && r ? '+' : '') + 'Rs ' + s; };
+  const fmtPct = n => isFinite(n) ? (n > 0 ? '+' : '') + n.toFixed(2) + '%' : '';
+  const label = f => f.name;
+  const dateLabel = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? +m[3] + ' ' + 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ')[m[2]-1] : iso; };
+
+  function status(msg, kind){ const s = $('status'); s.textContent = msg; s.className = 'status' + (kind ? ' ' + kind : ''); }
+  function markDirty(){ dirty = true; status('Unsaved changes'); }
+
+  function load(data){
+    FUNDS = data.funds.map(a => ({id:String(a[0]), name:a[1], amc:a[2], category:a[3], nav:+a[4], repurchase:+a[5] || +a[4], date:a[6]}));
+    FUNDS.forEach(f => { f.search = (f.name + ' ' + f.amc + ' ' + f.category).toLowerCase(); BY_ID[f.id] = f; });
+    $('sub').textContent = FUNDS.length + ' funds from MUFAP · refreshed ' + (data.refreshedAt || 'just now');
+    rowsEl.innerHTML = '';
+    (data.holdings.length ? data.holdings : [{}]).forEach(h => addRow(h));
+    ['add','save','report'].forEach(id => $(id).disabled = false);
+    $('summary').hidden = false;
+    recalc();
+    status(live ? '' : 'Demo mode: changes are not saved.');
+  }
+
+  function addRow(h){
+    h = h || {};
+    const id = 'r' + (++rowSeq);
+    const el = document.createElement('div');
+    el.className = 'row';
+    el.innerHTML =
+      '<div class="row-top"><div class="combo">' +
+        '<label for="' + id + '-f">Fund</label>' +
+        '<input id="' + id + '-f" type="text" autocomplete="off" placeholder="Search by fund, AMC or category" role="combobox" aria-expanded="false" aria-autocomplete="list">' +
+        '<ul class="list" role="listbox" hidden></ul>' +
+      '</div><button type="button" class="ghost rm" aria-label="Remove this fund">Remove</button></div>' +
+      '<div class="meta"></div>' +
+      '<div class="fields">' +
+        '<div><label for="' + id + '-u">Units</label><input id="' + id + '-u" class="n u" type="number" inputmode="decimal" step="any" min="0"></div>' +
+        '<div><label for="' + id + '-i">Invested (Rs)</label><input id="' + id + '-i" class="n i" type="number" inputmode="decimal" step="any" min="0"></div>' +
+      '</div>' +
+      '<div class="calc"></div>';
+    rowsEl.appendChild(el);
+    const fin = el.querySelector('.combo input'), list = el.querySelector('.list');
+    el.dataset.fund = '';
+    if (h.fundId && BY_ID[h.fundId]) { el.dataset.fund = h.fundId; fin.value = label(BY_ID[h.fundId]); }
+    if (h.units) el.querySelector('.u').value = h.units;
+    if (h.invested) el.querySelector('.i').value = h.invested;
+
+    let matches = [], active = -1;
+    function show(){
+      const terms = fin.value.toLowerCase().split(/\s+/).filter(Boolean);
+      matches = (terms.length ? FUNDS.filter(f => terms.every(t => f.search.includes(t))) : FUNDS).slice(0, 12);
+      active = matches.length ? 0 : -1;
+      list.innerHTML = matches.length
+        ? matches.map((f, i) => '<li role="option" data-i="' + i + '"' + (i === active ? ' class="on"' : '') + '><span>' + esc(f.name) + '</span><small>' + esc(f.amc) + ' · ' + esc(f.category) + '</small></li>').join('')
+        : '<li><small>No fund matches. Try fewer words.</small></li>';
+      list.hidden = false; fin.setAttribute('aria-expanded', 'true');
+    }
+    function hide(){ list.hidden = true; fin.setAttribute('aria-expanded', 'false'); }
+    function pick(f){ el.dataset.fund = f.id; fin.value = label(f); hide(); el.classList.remove('invalid'); markDirty(); recalc(); el.querySelector('.u').focus(); }
+    fin.addEventListener('focus', () => { fin.select(); show(); });
+    fin.addEventListener('input', () => { el.dataset.fund = ''; show(); markDirty(); recalc(); });
+    fin.addEventListener('keydown', e => {
+      if (list.hidden) return;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault(); if (!matches.length) return;
+        active = (active + (e.key === 'ArrowDown' ? 1 : -1) + matches.length) % matches.length;
+        list.querySelectorAll('li').forEach((li, i) => li.classList.toggle('on', i === active));
+        list.children[active].scrollIntoView({block:'nearest'});
+      } else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); pick(matches[active]); }
+      else if (e.key === 'Escape') hide();
+    });
+    list.addEventListener('mousedown', e => { const li = e.target.closest('li[data-i]'); if (li) { e.preventDefault(); pick(matches[+li.dataset.i]); } });
+    fin.addEventListener('blur', () => setTimeout(() => {
+      hide();
+      if (!el.dataset.fund) { const exact = FUNDS.find(f => f.name.toLowerCase() === fin.value.trim().toLowerCase()); if (exact) pick(exact); }
+    }, 150));
+    el.querySelectorAll('.u,.i').forEach(i => i.addEventListener('input', () => { markDirty(); recalc(); }));
+    el.querySelector('.rm').addEventListener('click', () => { el.remove(); if (!rowsEl.children.length) addRow(); markDirty(); recalc(); });
+    return el;
+  }
+
+  function recalc(){
+    let value = 0, invested = 0;
+    rowsEl.querySelectorAll('.row').forEach(el => {
+      const f = BY_ID[el.dataset.fund];
+      const units = parseFloat(el.querySelector('.u').value) || 0;
+      const inv = parseFloat(el.querySelector('.i').value) || 0;
+      el.querySelector('.meta').textContent = f ? f.category + ' · NAV ' + f.nav.toFixed(4) + ' on ' + dateLabel(f.date) : '';
+      const calc = el.querySelector('.calc');
+      if (f && units) {
+        const v = units * f.repurchase, t = v - inv;
+        value += v; invested += inv;
+        calc.innerHTML = '<span>Value <b class="num">' + fmtRs(v) + '</b></span>' +
+          (inv ? '<span>P/L <b class="num ' + (t >= 0 ? 'gain' : 'loss') + '">' + fmtRs(t, true) + ' (' + fmtPct((v / inv - 1) * 100) + ')</b></span>' : '');
+      } else calc.innerHTML = '';
+    });
+    const tot = value - invested;
+    $('s-val').textContent = fmtRs(value);
+    $('s-inv').textContent = fmtRs(invested);
+    $('s-tot').textContent = fmtRs(tot, true) + (invested ? ' (' + fmtPct((value / invested - 1) * 100) + ')' : '');
+    $('s-tot').className = 'num ' + (tot >= 0 ? 'gain' : 'loss');
+  }
+
+  function collect(){
+    const rows = []; let bad = null;
+    rowsEl.querySelectorAll('.row').forEach(el => {
+      const name = el.querySelector('.combo input').value.trim();
+      const units = el.querySelector('.u').value, invested = el.querySelector('.i').value;
+      el.classList.remove('invalid');
+      if (!el.dataset.fund && !name && !units && !invested) return;
+      if (!el.dataset.fund) { el.classList.add('invalid'); bad = bad || 'Pick each fund from the list.'; return; }
+      if (!(parseFloat(units) > 0)) { el.classList.add('invalid'); bad = bad || 'Units must be more than 0. Use Remove to drop a fund.'; return; }
+      rows.push({fundId: el.dataset.fund, units: parseFloat(units), invested: parseFloat(invested) || 0});
+    });
+    const ids = rows.map(r => r.fundId);
+    if (!bad && new Set(ids).size !== ids.length) bad = 'A fund is listed twice. Combine it into one row.';
+    return {rows, bad};
+  }
+
+  $('add').addEventListener('click', () => { addRow().querySelector('.combo input').focus(); });
+
+  $('save').addEventListener('click', () => {
+    const {rows, bad} = collect();
+    if (bad) { status(bad, 'err'); return; }
+    if (!live) { dirty = false; status('Demo mode: would save ' + rows.length + ' fund(s).', 'ok'); return; }
+    $('save').disabled = true; status('Saving…');
+    google.script.run
+      .withSuccessHandler(r => { dirty = false; $('save').disabled = false; status('Saved ' + r.saved + ' fund(s)' + (r.changes ? ', ' + r.changes + ' change(s) logged.' : '. Nothing changed.'), 'ok'); })
+      .withFailureHandler(e => { $('save').disabled = false; status(e.message || String(e), 'err'); })
+      .saveHoldings(rows);
+  });
+
+  $('report').addEventListener('click', () => {
+    if (dirty) { status('Save your changes first.', 'err'); return; }
+    if (!live) { status('Demo mode: would send the report now.', 'ok'); return; }
+    $('report').disabled = true; status('Sending report…');
+    google.script.run
+      .withSuccessHandler(msg => { $('report').disabled = false; status(msg, 'ok'); })
+      .withFailureHandler(e => { $('report').disabled = false; status(e.message || String(e), 'err'); })
+      .sendReportNow();
+  });
+
+  window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  if (live) {
+    google.script.run
+      .withSuccessHandler(load)
+      .withFailureHandler(e => { $('sub').textContent = 'Could not load funds: ' + (e.message || e); })
+      .getFormData();
+  } else {
+    load(DEMO);
+  }
+})();
+</script>

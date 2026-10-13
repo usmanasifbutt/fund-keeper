@@ -1,0 +1,332 @@
+<title>Keeper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: single reading column; the two message previews sit side by side, everything else stacks. */
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --fg:#17202e; --muted:#5b6578; --line:#dde1e8;
+  --accent:#1f4f8f; --accent-soft:#e6edf7;
+  --gain:#0f7a52; --loss:#b3261e; --warn:#8a5a00; --warn-soft:#fbf1dc;
+  --wa-bg:#e9e3d8; --wa-bubble:#d9fdd3; --wa-fg:#111b21;
+  --code-bg:#f0f2f6;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Source Sans 3",ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f141c; --surface:#171e29; --fg:#e6eaf1; --muted:#9aa4b6; --line:#2a3342;
+  --accent:#8db4ee; --accent-soft:#1c2a40;
+  --gain:#4cc28f; --loss:#f08a80; --warn:#e6b450; --warn-soft:#2e2615;
+  --wa-bg:#0b141a; --wa-bubble:#005c4b; --wa-fg:#e9edef;
+  --code-bg:#121821; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141c; --surface:#171e29; --fg:#e6eaf1; --muted:#9aa4b6; --line:#2a3342;
+  --accent:#8db4ee; --accent-soft:#1c2a40;
+  --gain:#4cc28f; --loss:#f08a80; --warn:#e6b450; --warn-soft:#2e2615;
+  --wa-bg:#0b141a; --wa-bubble:#005c4b; --wa-fg:#e9edef;
+  --code-bg:#121821; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 var(--body)}
+.wrap{max-width:980px;margin:0 auto;padding-inline:20px;padding-block:32px 64px;display:grid;gap:44px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(2rem,5vw,2.8rem);font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.5rem;font-weight:700}
+h3{font-size:1.05rem;font-weight:600}
+p{margin:0;max-width:66ch}
+.muted{color:var(--muted)}
+.eyebrow{font:600 .75rem/1 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+section{display:grid;gap:16px}
+.num{font-variant-numeric:tabular-nums}
+.gain{color:var(--gain)} .loss{color:var(--loss)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--warn-soft);color:var(--warn)}
+header{display:grid;gap:12px}
+
+/* holdings input */
+.inputs{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:end;padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.field{display:grid;gap:4px;min-width:0}
+.field label{font-size:.8rem;color:var(--muted);font-weight:600}
+.field input{font:600 1rem var(--mono);width:9.5rem;max-width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.field input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* previews */
+.previews{display:grid;grid-template-columns:1.25fr 1fr;gap:20px;align-items:start}
+@media (max-width:760px){.previews{grid-template-columns:1fr}}
+.pane{min-width:0;display:grid;gap:8px}
+.pane-label{font-size:.8rem;color:var(--muted);font-weight:600}
+.email{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.email-head{padding:12px 16px;border-bottom:1px solid var(--line);font-size:.85rem;display:grid;gap:2px}
+.email-head b{font-weight:600}
+.email-body{padding:18px 16px;display:grid;gap:14px}
+.big{font:700 1.9rem/1 var(--display)}
+.kpis{display:flex;flex-wrap:wrap;gap:8px 28px}
+.kpi{display:grid;gap:2px}
+.kpi span{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.kpi b{font:600 1.05rem var(--mono)}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
+td{font-family:var(--mono);font-size:.82rem}
+td:first-child{font-family:var(--body);font-size:.9rem}
+.spark{width:100%;height:auto;display:block}
+.wa{background:var(--wa-bg);border-radius:10px;padding:16px 14px;display:grid;gap:8px}
+.wa-from{font-size:.75rem;color:var(--muted);text-align:center}
+.bubble{justify-self:start;max-width:100%;background:var(--wa-bubble);color:var(--wa-fg);border-radius:0 8px 8px 8px;padding:8px 10px 6px;font:14px/1.45 var(--body);white-space:pre-wrap;box-shadow:0 1px .5px rgb(0 0 0 / .13)}
+.bubble time{display:block;text-align:right;font-size:.7rem;opacity:.65;margin-top:2px}
+
+/* pipeline */
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;counter-reset:s;list-style:none;margin:0;padding:0}
+.flow li{counter-increment:s;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);display:grid;gap:4px;align-content:start}
+.flow li::before{content:counter(s);font:700 .8rem var(--mono);color:var(--accent)}
+.flow li b{font-family:var(--display);font-weight:600}
+.flow li span{font-size:.88rem;color:var(--muted)}
+
+/* options table */
+.opt td{font-family:var(--body);font-size:.9rem;white-space:normal;text-align:left;vertical-align:top}
+.opt th{text-align:left}
+.opt td:first-child{font-weight:600;white-space:nowrap}
+.pick{font-size:.72rem;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin-left:6px}
+.verdict{font-weight:600}
+.v-yes{color:var(--gain)} .v-maybe{color:var(--warn)} .v-no{color:var(--loss)}
+
+pre{margin:0;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px;overflow-x:auto;font:13px/1.55 var(--mono);color:var(--fg)}
+code{font-family:var(--mono);font-size:.88em}
+.c{color:var(--muted)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.two>*{min-width:0}
+ul.plain{margin:0;padding-left:1.1rem;display:grid;gap:6px;max-width:66ch}
+.tree{font:13px/1.7 var(--mono)}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Daily tracker · Google Sheets + Apps Script</div>
+  <h1>Keeper</h1>
+  <p class="muted">Every evening a script in your own Google account reads MUFAP's NAV table, works out your profit or loss, and sends you an email and a WhatsApp message. You keep your units up to date in a phone-friendly form. No logins to the MCB or Meezan apps, nothing to pay.</p>
+  <div><span class="chip">Sample · units, costs and previous-day NAVs are examples. Today's NAVs (28.6100 and 53.0734, valid 12 Oct 2026) are real, from MUFAP.</span></div>
+</header>
+
+<section aria-labelledby="h-out">
+  <h2 id="h-out">What you receive each evening</h2>
+  <p class="muted">Change the units below to see both messages update. In the real tool these figures come from your holdings form.</p>
+  <div class="inputs">
+    <div class="field"><label for="u-aisf">Alhamra Islamic Stock · units</label><input id="u-aisf" type="number" step="0.0001" min="0" value="3500"></div>
+    <div class="field"><label for="c-aisf">Amount invested (Rs)</label><input id="c-aisf" type="number" step="1" min="0" value="95000"></div>
+    <div class="field"><label for="u-mcf">Meezan Cash · units</label><input id="u-mcf" type="number" step="0.0001" min="0" value="1900"></div>
+    <div class="field"><label for="c-mcf">Amount invested (Rs)</label><input id="c-mcf" type="number" step="1" min="0" value="100000"></div>
+  </div>
+
+  <div class="previews">
+    <div class="pane">
+      <div class="pane-label">Email · Gmail, around 9 pm</div>
+      <div class="email">
+        <div class="email-head">
+          <div><b>Keeper</b> <span class="muted">&lt;your-gmail&gt;</span></div>
+          <div id="e-subj">Subject: …</div>
+        </div>
+        <div class="email-body">
+          <div>
+            <div class="muted" style="font-size:.85rem">Today's change · NAV date 12 Oct 2026</div>
+            <div class="big num" id="e-day">…</div>
+          </div>
+          <div class="kpis">
+            <div class="kpi"><span>Portfolio value</span><b class="num" id="e-val">…</b></div>
+            <div class="kpi"><span>Total P/L</span><b class="num" id="e-tot">…</b></div>
+            <div class="kpi"><span>Invested</span><b class="num" id="e-inv">…</b></div>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Fund</th><th>Units</th><th>NAV</th><th>Day</th><th>Value</th><th>Total P/L</th></tr></thead>
+              <tbody id="e-rows"></tbody>
+            </table>
+          </div>
+          <div>
+            <div class="muted" style="font-size:.8rem;margin-bottom:4px">Portfolio value by NAV date (example)</div>
+            <svg class="spark" id="spark" viewBox="0 0 400 70" preserveAspectRatio="none" role="img" aria-label="Example 30-day portfolio value trend"></svg>
+          </div>
+          <div class="muted" style="font-size:.8rem">Prices from MUFAP's daily NAV table. <span style="color:var(--accent);text-decoration:underline">Edit holdings</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pane">
+      <div class="pane-label">WhatsApp · same time, text only (optional)</div>
+      <div class="wa">
+        <div class="wa-from">CallMeBot</div>
+        <div class="bubble" id="wa-msg">…</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-flow">
+  <h2 id="h-flow">How it runs</h2>
+  <ol class="flow">
+    <li><b>Wake up</b><span>A time trigger in Apps Script starts the job around 9 pm Pakistan time, with a 9 am retry in case MUFAP publishes late.</span></li>
+    <li><b>Read NAVs</b><span>Downloads MUFAP's daily NAV page and refreshes all 558 funds in the <em>Funds</em> sheet, which also feeds the form's search.</span></li>
+    <li><b>Load holdings</b><span>Reads your units and amount invested from the <em>Holdings</em> sheet, which the form writes to.</span></li>
+    <li><b>Calculate</b><span>Day P/L = units × (NAV − previous NAV). Value = units × repurchase price. Your funds' NAVs are kept in the <em>NAVs</em> sheet.</span></li>
+    <li><b>Send</b><span>An HTML email with a table and chart, plus a short WhatsApp text. If none of your funds has a new NAV date, it sends nothing.</span></li>
+  </ol>
+</section>
+
+<section aria-labelledby="h-opt">
+  <h2 id="h-opt">Free ways to get the message</h2>
+  <div class="tbl-wrap">
+    <table class="opt">
+      <thead><tr><th>Option</th><th>Cost</th><th>What it takes</th><th>Catch</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>Gmail from Apps Script <span class="pick">primary</span></td><td>Free</td><td>Nothing extra. The script sends from your own Gmail once you approve it at setup.</td><td>Up to 100 emails a day on a personal account; you need one. Supports a full HTML table and chart.</td><td class="verdict v-yes">Use</td></tr>
+        <tr><td>CallMeBot WhatsApp <span class="pick">add-on</span></td><td>Free</td><td>Message the bot once from WhatsApp to get a personal API key, then paste it into the <em>Settings</em> sheet.</td><td>Unofficial and personal use only. Sends text to your own number. Occasionally down or slow, so email stays the reliable copy.</td><td class="verdict v-yes">Use</td></tr>
+        <tr><td>WhatsApp Cloud API (Meta)</td><td>Paid per message</td><td>Meta developer app, a business number, and an approved message template.</td><td>A daily message you didn't reply to counts as a business-initiated template, which Meta bills per message.</td><td class="verdict v-maybe">Later, if CallMeBot breaks</td></tr>
+        <tr><td>Twilio WhatsApp sandbox</td><td>Trial credit</td><td>Join the sandbox from your phone.</td><td>The sandbox session lapses unless you keep messaging it, and trial credit runs out.</td><td class="verdict v-no">Skip</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="h-units">
+  <h2 id="h-units">Keeping your units up to date</h2>
+  <div class="two">
+    <div style="display:grid;gap:12px">
+      <p>A form only you can open, bookmarked on your phone. It opens with your current holdings filled in: change a number, add or remove a fund, press Save. <a href="https://claude.ai/artifact/CN1qkPRYRP2WkTYhqqnXVU" style="color:var(--accent)">Try the demo form</a>.</p>
+      <ul class="plain">
+        <li><b>Bought more:</b> add the new units to the existing number, and the amount paid to "Invested".</li>
+        <li><b>New fund:</b> press <em>+ Add fund</em> and search by name, fund company or category.</li>
+        <li><b>Sold everything:</b> press <em>Remove</em>.</li>
+        <li><b>Dividend paid as units:</b> add the units and leave "Invested" alone. Skipping this shows a false loss, because the NAV drops on the payout day.</li>
+      </ul>
+      <p class="muted">Every save is logged in the <em>History</em> sheet, so you can see what changed and when.</p>
+    </div>
+    <div class="email" style="display:grid">
+      <div class="email-head"><b>Your holdings</b><span class="muted">558 funds from MUFAP</span></div>
+      <div class="email-body" style="gap:10px">
+        <div style="display:grid;gap:4px;padding:10px;border:1px solid var(--line);border-radius:8px">
+          <span class="muted" style="font-size:.75rem;font-weight:600">Fund</span>
+          <b>Alhamra Islamic Stock Fund</b>
+          <span class="muted" style="font-size:.8rem">Shariah Compliant Equity · NAV 28.6100 on 12 Oct</span>
+          <span class="num" style="font-size:.88rem">3,500 units · Rs 95,000 invested</span>
+        </div>
+        <div style="display:grid;gap:4px;padding:10px;border:1px solid var(--line);border-radius:8px">
+          <span class="muted" style="font-size:.75rem;font-weight:600">Fund</span>
+          <b>Meezan Cash Fund</b>
+          <span class="muted" style="font-size:.8rem">Shariah Compliant Money Market · NAV 53.0734 on 12 Oct</span>
+          <span class="num" style="font-size:.88rem">1,900 units · Rs 100,000 invested</span>
+        </div>
+        <span style="color:var(--accent);font-weight:600;font-size:.9rem">+ Add fund</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="h-code">
+  <h2 id="h-code">The pieces</h2>
+  <div class="two">
+    <div style="display:grid;gap:8px">
+      <h3>One Google Sheet</h3>
+      <pre class="tree">Keeper (Google Sheet)
+├─ Funds      <span class="c"># all MUFAP funds, refreshed daily</span>
+├─ Holdings   <span class="c"># what the form saves</span>
+├─ History    <span class="c"># every change you saved</span>
+├─ NAVs       <span class="c"># your funds' NAV per day</span>
+├─ Daily      <span class="c"># each report's totals + chart</span>
+└─ Settings   <span class="c"># email, WhatsApp, alert %</span></pre>
+      <p class="muted">The sheet stays private in your Google Drive. A "Keeper" menu in the sheet handles setup, turning reports on or off, and sending a report now.</p>
+    </div>
+    <div style="display:grid;gap:8px">
+      <h3>Attached script</h3>
+      <pre class="tree">Apps Script project
+├─ Code.gs          <span class="c"># read MUFAP → calculate → send</span>
+├─ Form.html        <span class="c"># the holdings form</span>
+└─ appsscript.json  <span class="c"># Pakistan time; form open only to you</span>
+
+Triggers
+├─ eveningRun   <span class="c"># ~9:00 pm PKT</span>
+└─ morningRun   <span class="c"># ~9:00 am PKT retry</span></pre>
+      <p class="muted">Setup takes about 10 minutes: paste three files, run setup, deploy the form, fill in Settings.</p>
+    </div>
+  </div>
+  <div style="display:grid;gap:8px">
+    <h3>Reading MUFAP</h3>
+    <p class="muted">The NAV page is a plain HTML table (<code>id="table_id"</code>), so the script reads it directly. Each fund has a stable MUFAP ID, which is what your holdings are linked to. Tested against the 13 Oct page: 558 funds found.</p>
+    <pre>function parseMufap(html) {
+  const table = html.slice(html.indexOf('id="table_id"'), html.indexOf('&lt;/table&gt;'));
+  return table.split(/&lt;tr\b/i).slice(1).map(row =&gt; {
+    const id = row.match(/FundID=(\d+)/)[1];
+    const cells = [...row.matchAll(/&lt;td\b[^&gt;]*&gt;([\s\S]*?)&lt;\/td&gt;/gi)].map(m =&gt; cleanText_(m[1]));
+    return { id, amc: cells[1], name: cells[2], category: cells[3],
+             repurchase: num_(cells[6]), nav: num_(cells[7]), date: isoFromMufap_(cells[8]) };
+  });
+}  <span class="c">// simplified; the real version skips bad rows and makes pension sub-fund names unique</span></pre>
+  </div>
+</section>
+
+<section aria-labelledby="h-next">
+  <h2 id="h-next">What's built, what's next</h2>
+  <ul class="plain">
+    <li><b>Built:</b> MUFAP reader, holdings form, daily email with chart, WhatsApp text, 2% drop warning, morning retry, error email if MUFAP can't be read.</li>
+    <li><b>Not yet checked:</b> whether MUFAP lets Google's servers download its page. Setup step 2 shows this within a minute. If it's blocked, only the download moves to a free GitHub job.</li>
+    <li><b>Next ideas:</b> XIRR return, month and year figures, comparison with the KMI-30 index, a Friday weekly summary, and a capital gains tax estimate.</li>
+  </ul>
+</section>
+
+</div>
+
+<script>
+(function(){
+  // Real NAVs from MUFAP (validity 12 Oct 2026). Previous-day NAVs are illustrative.
+  const F = [
+    {code:"AISF", name:"Alhamra Islamic Stock", nav:28.61,   prev:28.34,   u:"u-aisf", c:"c-aisf", dp:2},
+    {code:"MCF",  name:"Meezan Cash",           nav:53.0734, prev:53.0611, u:"u-mcf",  c:"c-mcf",  dp:4}
+  ];
+  const rs = (n, sign) => (sign && n > 0 ? "+" : n < 0 ? "−" : "") + "Rs " + Math.abs(n).toLocaleString("en-PK",{maximumFractionDigits:0});
+  const pct = n => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n).toFixed(2) + "%";
+  const cls = n => n >= 0 ? "gain" : "loss";
+  const val = id => { const v = parseFloat(document.getElementById(id).value); return isFinite(v) && v >= 0 ? v : 0; };
+
+  function render(){
+    let day=0, value=0, prevValue=0, cost=0, rows="", waLines=[];
+    for (const f of F){
+      const units = val(f.u), inv = val(f.c);
+      const v = units*f.nav, pv = units*f.prev, d = v-pv, tot = v-inv;
+      day+=d; value+=v; prevValue+=pv; cost+=inv;
+      const dp = f.prev ? (f.nav/f.prev-1)*100 : 0;
+      rows += `<tr><td>${f.name}</td><td>${units.toLocaleString("en-PK",{maximumFractionDigits:4})}</td><td>${f.nav.toFixed(f.dp)}</td>` +
+              `<td class="${cls(d)}">${rs(d,true)}</td><td>${rs(v)}</td><td class="${cls(tot)}">${rs(tot,true)}</td></tr>`;
+      waLines.push(`• ${f.name}: ${rs(d,true)} (${pct(dp)})`);
+    }
+    const dayPct = prevValue ? day/prevValue*100 : 0, tot = value-cost, totPct = cost ? tot/cost*100 : 0;
+    const dayEl = document.getElementById("e-day");
+    dayEl.textContent = `${rs(day,true)}  ${pct(dayPct)}`; dayEl.className = "big num " + cls(day);
+    document.getElementById("e-subj").textContent = `Subject: Keeper 12 Oct · ${rs(day,true)} today (${pct(dayPct)})`;
+    document.getElementById("e-val").textContent = rs(value);
+    document.getElementById("e-inv").textContent = rs(cost);
+    const t = document.getElementById("e-tot"); t.textContent = `${rs(tot,true)} (${pct(totPct)})`; t.className = "num " + cls(tot);
+    document.getElementById("e-rows").innerHTML = rows;
+    document.getElementById("wa-msg").innerHTML =
+      `<b>Keeper · 12 Oct</b>\nToday: ${rs(day,true)} (${pct(dayPct)})\n${waLines.join("\n")}\nValue: ${rs(value)}\nTotal P/L: ${rs(tot,true)} (${pct(totPct)})<time>9:04 pm</time>`;
+    drawSpark(value);
+  }
+
+  function drawSpark(end){
+    // Example series that ends at today's value.
+    const n=30, pts=[]; let x=end*0.965;
+    for (let i=0;i<n;i++){ const w=Math.sin(i*0.7)*0.004+Math.cos(i*1.9)*0.003; x = i===n-1 ? end : x*(1+0.0013+w); pts.push(x); }
+    const lo=Math.min(...pts), hi=Math.max(...pts), span=(hi-lo)||1;
+    const X=i=>4+i*(392/(n-1)), Y=v=>62-((v-lo)/span)*54;
+    const line=pts.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
+    document.getElementById("spark").innerHTML =
+      `<line x1="0" x2="400" y1="62" y2="62" stroke="var(--line)" stroke-width="1"/>`+
+      `<path d="${line}L${X(n-1)},66L${X(0)},66Z" fill="var(--accent-soft)"/>`+
+      `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="1.8" vector-effect="non-scaling-stroke"/>`+
+      `<circle cx="${X(n-1)}" cy="${Y(pts[n-1])}" r="3" fill="var(--accent)"/>`;
+  }
+
+  document.querySelectorAll(".inputs input").forEach(i => i.addEventListener("input", render));
+  render();
+})();
+</script>
