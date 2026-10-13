@@ -75,7 +75,13 @@ export function restoreBackup(text: string): Backup {
   if (data.app !== 'keeper' || !Array.isArray(data.holdings)) throw new Error("That file isn't a Keeper backup.");
   const holdings = data.holdings.filter(
     (h): h is Holding => !!h && typeof h.fundId === 'string' && Number(h.units) > 0,
-  ).map(h => ({ fundId: h.fundId, name: String(h.name ?? ''), units: Number(h.units), invested: Number(h.invested) || 0 }));
+  ).map(h => ({
+    fundId: h.fundId,
+    name: String(h.name ?? ''),
+    units: Number(h.units),
+    invested: Number(h.invested) || 0,
+    ...(typeof h.since === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(h.since) ? { since: h.since } : {}),
+  }));
   const snapshots = Array.isArray(data.snapshots)
     ? data.snapshots.filter((s): s is Snapshot => !!s && typeof s.date === 'string' && isFinite(Number(s.value)))
     : [];

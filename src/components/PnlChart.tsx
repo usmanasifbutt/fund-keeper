@@ -105,8 +105,11 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
       {pts.some(p => p.estimated) && (
         <p className="chart-note">
           <span>Green is above Rs 0 (profit), red is below (loss).</span>
-          <span><i className="legend-dash" aria-hidden="true" />Estimated: what today's units would have been worth on each date, minus what you've invested so far.</span>
+          <span><i className="legend-dash" aria-hidden="true" />Estimated: what your units in the funds you held on each date were worth, minus what you invested in them.</span>
           <span><i className="legend-solid" aria-hidden="true" />Recorded each day you open Keeper.</span>
+          {positions.some(p => !p.holding.since) && (
+            <span>Funds without a first-invested date are treated as held for the whole year. Add the date in Edit to start the estimate from when you bought.</span>
+          )}
         </p>
       )}
     </section>

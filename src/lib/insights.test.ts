@@ -58,6 +58,34 @@ describe('estimatePast', () => {
   });
 });
 
+describe('estimatePast with first-invested dates', () => {
+  const withSince = (eqSince?: string, mmSince?: string) => computePortfolio(
+    [
+      { fundId: 'EQ', name: 'EQ', units: 100, invested: 2500, ...(eqSince ? { since: eqSince } : {}) },
+      { fundId: 'MM', name: 'MM', units: 20, invested: 900, ...(mmSince ? { since: mmSince } : {}) },
+    ],
+    funds,
+  ).positions;
+
+  it('leaves out a fund before its first-invested date, along with its cost', () => {
+    // Equity bought on 1 Oct: the 30-day point (13 Sep) only has the money market fund.
+    const pts = estimatePast(withSince('2026-10-01'));
+    const sep = pts.find(p => p.date === '2026-09-13')!;
+    expect(sep.pnl).toBeCloseTo(20 * 50 / (1 + 0.1 * 30 / 365) - 900, 6);
+  });
+
+  it('starts at zero on the earliest date when every fund has one, and drops earlier points', () => {
+    const pts = estimatePast(withSince('2026-10-01', '2026-09-20'));
+    expect(pts[0]).toEqual({ date: '2026-09-20', pnl: 0, estimated: true });
+    expect(pts.some(p => p.date < '2026-09-20')).toBe(false);
+    expect(pts.map(p => p.date)).toEqual(['2026-09-20', '2026-10-12']);
+  });
+
+  it('treats funds without a date as held all along', () => {
+    expect(estimatePast(withSince(undefined, '2026-09-20')).map(p => p.date)).toEqual(['2025-10-13', '2026-09-13', '2026-10-12']);
+  });
+});
+
 describe('pnlHistory', () => {
   it('keeps estimates only before the first recorded day', () => {
     const est = [

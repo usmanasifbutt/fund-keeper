@@ -64,27 +64,40 @@ const HORIZONS: [number, keyof FundReturns][] = [
 ];
 
 /**
- * Estimates total P/L at past dates from each fund's 1–365 day returns, assuming you held today's units
- * at today's cost all along. Skips a date if any held fund has no return for it (e.g. a young fund).
+ * Estimates total P/L at past dates from each fund's 1–365 day returns, using today's units and cost.
+ * A fund with a first-invested date counts only from that date; a fund without one is treated as held all along.
+ * Skips a date if a fund held then has no return for it (e.g. a young fund).
  */
 export function estimatePast(positions: Position[]): PnlPoint[] {
   if (!positions.length || positions.some(p => !p.fund)) return [];
-  const invested = positions.reduce((s, p) => s + p.holding.invested, 0);
   const latest = positions.reduce((d, p) => (p.fund!.date > d ? p.fund!.date : d), '');
   const out: PnlPoint[] = [];
   for (const [days, key] of HORIZONS) {
+    const date = shiftDate(latest, -days);
     let value = 0;
+    let invested = 0;
+    let held = 0;
     let ok = true;
     for (const p of positions) {
+      if (p.holding.since && p.holding.since > date) continue; // not bought yet
       const f = p.fund!;
       const r = f.returns[key];
       if (r === null || r === undefined) { ok = false; break; }
       const growth = f.basis === 'annualized' ? (r / 100) * (days / 365) : r / 100;
       value += p.holding.units * (f.nav / (1 + growth));
+      invested += p.holding.invested;
+      held += 1;
     }
-    if (ok) out.push({ date: shiftDate(latest, -days), pnl: value - invested, estimated: true });
+    if (ok && held > 0) out.push({ date, pnl: value - invested, estimated: true });
   }
-  return out;
+  // When every fund has a first-invested date, start the line at zero on the earliest one.
+  if (positions.every(p => p.holding.since)) {
+    const first = positions.map(p => p.holding.since!).sort()[0];
+    if (first < latest && first >= shiftDate(latest, -365) && !out.some(p => p.date === first)) {
+      out.push({ date: first, pnl: 0, estimated: true });
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** Recorded snapshots win; estimates fill in only before the first recorded day. */

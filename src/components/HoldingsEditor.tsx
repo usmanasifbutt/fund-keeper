@@ -9,6 +9,8 @@ interface Row {
   fundId: string;
   units: string;
   invested: string;
+  /** First-invested date, YYYY-MM-DD, or empty */
+  since: string;
   /** What is typed in the fund search box */
   text: string;
 }
@@ -29,17 +31,20 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
     units: h ? String(h.units) : '',
     invested: h?.invested ? String(h.invested) : '',
     text: h?.name ?? '',
+    since: h?.since ?? '',
   });
   const [rows, setRows] = useState<Row[]>(() => (holdings.length ? holdings.map(newRow) : [newRow()]));
   const [error, setError] = useState<string | null>(null);
   const [badKeys, setBadKeys] = useState<Set<number>>(new Set());
   const byId = useMemo(() => new Map(funds.map(f => [f.id, f])), [funds]);
 
-  const update = (key: number, patch: Partial<Row>) => {
+  const update = (key: number, patch: Partial<Omit<Row, 'key'>>) => {
     setRows(prev => prev.map(r => (r.key === key ? { ...r, ...patch } : r)));
     setError(null);
   };
   const remove = (key: number) => setRows(prev => (prev.length > 1 ? prev.filter(r => r.key !== key) : [newRow()]));
+
+  const today = new Date().toLocaleDateString('en-CA'); // local date as YYYY-MM-DD
 
   function save() {
     const bad = new Set<number>();
@@ -55,9 +60,10 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
       if (seen.has(r.fundId)) { bad.add(r.key); msg ??= `${fund?.name ?? 'A fund'} is listed twice. Combine it into one row.`; continue; }
       if (!(u > 0)) { bad.add(r.key); msg ??= 'Units must be more than 0. Use Remove to drop a fund.'; continue; }
       if (!(inv >= 0)) { bad.add(r.key); msg ??= "Amount invested can't be negative."; continue; }
+      if (r.since && (!/^\d{4}-\d{2}-\d{2}$/.test(r.since) || r.since > today)) { bad.add(r.key); msg ??= "First invested date can't be in the future."; continue; }
       seen.add(r.fundId);
       const prior = holdings.find(h => h.fundId === r.fundId);
-      out.push({ fundId: r.fundId, name: fund?.name ?? prior?.name ?? '', units: u, invested: inv });
+      out.push({ fundId: r.fundId, name: fund?.name ?? prior?.name ?? '', units: u, invested: inv, ...(r.since ? { since: r.since } : {}) });
     }
     setBadKeys(bad);
     if (msg) { setError(msg); return; }
@@ -107,6 +113,11 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
                     <input id={`inv-${r.key}`} type="number" inputMode="decimal" step="any" min="0" value={r.invested}
                       onChange={e => update(r.key, { invested: e.target.value })} />
                   </label>
+                  <label className="field-wide">
+                    <span>First invested <em>(optional)</em></span>
+                    <input id={`since-${r.key}`} type="date" max={today} value={r.since}
+                      onChange={e => update(r.key, { since: e.target.value })} />
+                  </label>
                 </div>
                 {fund && u > 0 && (
                   <div className="row-calc">
@@ -124,6 +135,7 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
           <p><b>Units:</b> from your purchase confirmation or account statement.</p>
           <p><b>Invested:</b> the total you've paid into that fund, including any front-end load. When you buy more, add the new units and the new amount to both numbers.</p>
           <p><b>Dividend paid as units:</b> update Units from your statement and leave Invested as it is.</p>
+          <p><b>First invested:</b> the date of your first purchase. The profit/loss chart then starts from that date instead of assuming you held the fund for a full year.</p>
         </div>
         <button type="button" className="primary wide" onClick={save}>Save holdings</button>
       </main>

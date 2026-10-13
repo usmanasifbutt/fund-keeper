@@ -7,6 +7,8 @@ export interface Holding {
   units: number;
   /** Total rupees paid into the fund, including loads. Reinvested dividends are not added here. */
   invested: number;
+  /** Optional date of the first purchase, YYYY-MM-DD. Limits the estimated history to when you held the fund. */
+  since?: string;
 }
 
 export interface Position {

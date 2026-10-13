@@ -21,6 +21,7 @@ export default function FundCard({ position: p, latestDate }: { position: Positi
           {f.category} · NAV {f.nav.toFixed(4)}
           <span className={stale ? 'chip chip-warn' : 'chip'}>{dateLabel(f.date)}</span>
         </div>
+        {p.holding.since && <div className="since">Holding since {dateLabel(p.holding.since)} {p.holding.since.slice(0, 4)}</div>}
       </header>
       <dl className="card-grid">
         <div><dt>Today</dt><dd className={tone(p.day)}>{p.day === null ? '–' : rs(p.day, true)}<small>{pct(p.dayPct, f.basis === 'annualized' ? 3 : 2)}</small></dd></div>

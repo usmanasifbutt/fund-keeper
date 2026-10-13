@@ -255,3 +255,12 @@ input[type="number"] { font-family: var(--mono); }
 .chart-est-dot { stroke: var(--muted); }
 .dot-gain { fill: var(--gain); }
 .dot-loss { fill: var(--loss); }
+
+/* First invested date */
+.field-wide { grid-column: 1 / -1; }
+label > span em { font-style: normal; font-weight: 500; }
+input[type="date"] {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg);
+  font-size: 16px; min-height: 44px;
+}
+.since { font-size: .78rem; color: var(--muted); }
