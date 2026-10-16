@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Holding } from '../lib/calc';
 import type { Fund } from '../lib/mufap';
-import { rs } from '../lib/format';
+import { rs, units as fmtUnits } from '../lib/format';
 import FundPicker from './FundPicker';
+import AddPurchase from './AddPurchase';
 
 interface Row {
   key: number;
@@ -11,6 +12,10 @@ interface Row {
   invested: string;
   /** First-invested date, YYYY-MM-DD, or empty */
   since: string;
+  /** Whether the "Add more" form is open */
+  adding: boolean;
+  /** Confirmation shown after adding a purchase, until saved */
+  added: string;
   /** What is typed in the fund search box */
   text: string;
 }
@@ -32,6 +37,8 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
     invested: h?.invested ? String(h.invested) : '',
     text: h?.name ?? '',
     since: h?.since ?? '',
+    adding: false,
+    added: '',
   });
   const [rows, setRows] = useState<Row[]>(() => (holdings.length ? holdings.map(newRow) : [newRow()]));
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +50,19 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
     setError(null);
   };
   const remove = (key: number) => setRows(prev => (prev.length > 1 ? prev.filter(r => r.key !== key) : [newRow()]));
+
+  /** Adds a purchase on top of the row's totals (rounded the way statements show them). */
+  function addPurchase(r: Row, units: number, amount: number) {
+    const newUnits = Math.round(((parseFloat(r.units) || 0) + units) * 10000) / 10000;
+    const newInvested = Math.round(((parseFloat(r.invested) || 0) + amount) * 100) / 100;
+    const what = amount > 0 ? `${fmtUnits(units)} units and ${rs(amount)}` : `${fmtUnits(units)} units`;
+    update(r.key, {
+      units: String(newUnits),
+      invested: newInvested ? String(newInvested) : r.invested,
+      adding: false,
+      added: `Added ${what}. Tap Save to keep it.`,
+    });
+  }
 
   const today = new Date().toLocaleDateString('en-CA'); // local date as YYYY-MM-DD
 
@@ -125,6 +145,19 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
                     {inv > 0 && <> · P/L <b className={value - inv >= 0 ? 'gain' : 'loss'}>{rs(value - inv, true)}</b></>}
                   </div>
                 )}
+                {r.added && <p className="ok row-added" role="status">{r.added}</p>}
+                {fund && (r.adding ? (
+                  <AddPurchase
+                    idPrefix={`add-${r.key}`}
+                    fund={fund}
+                    onAdd={(units, amount) => addPurchase(r, units, amount)}
+                    onCancel={() => update(r.key, { adding: false })}
+                  />
+                ) : (
+                  <button type="button" className="secondary add-more" onClick={() => update(r.key, { adding: true, added: '' })}>
+                    + Add more units
+                  </button>
+                ))}
               </section>
             );
           })}
@@ -133,8 +166,9 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
         {error && <p className="error" role="alert">{error}</p>}
         <div className="help">
           <p><b>Units:</b> from your purchase confirmation or account statement.</p>
-          <p><b>Invested:</b> the total you've paid into that fund, including any front-end load. When you buy more, add the new units and the new amount to both numbers.</p>
-          <p><b>Dividend paid as units:</b> update Units from your statement and leave Invested as it is.</p>
+          <p><b>Invested:</b> the total you've paid into that fund, including any front-end load.</p>
+          <p><b>Bought more:</b> tap <b>+ Add more units</b> on the fund and enter the units and amount from your confirmation. Keeper adds them to the totals.</p>
+          <p><b>Dividend paid as units:</b> use <b>+ Add more units</b> with the amount left at 0.</p>
           <p><b>First invested:</b> the date of your first purchase. The profit/loss chart then starts from that date instead of assuming you held the fund for a full year.</p>
         </div>
         <button type="button" className="primary wide" onClick={save}>Save holdings</button>

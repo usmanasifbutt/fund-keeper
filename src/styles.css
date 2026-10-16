@@ -268,3 +268,11 @@ input[type="date"] {
 /* Demo mode */
 .demo-banner { font-size: .82rem; padding: 8px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); }
 .demo-banner a { color: inherit; font-weight: 600; }
+
+/* Add more units */
+.add-more { justify-self: start; padding: 8px 14px; font-size: .9rem; }
+.add-purchase { display: grid; gap: 10px; padding: 12px; border: 1px dashed var(--accent); border-radius: 12px; background: var(--accent-soft); }
+.add-title { font-weight: 600; font-size: .9rem; }
+.add-hint { font-size: .8rem; color: var(--muted); }
+.link-btn { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; }
+.row-added { font-size: .85rem; }

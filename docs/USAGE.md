@@ -31,9 +31,9 @@ If a row is half filled, for example you typed a name but didn't pick from the l
 
 | What happened | What to change |
 |---|---|
-| Bought more units | Add the new units to **Units** and the amount paid to **Invested** |
+| Bought more units | Edit → **+ Add more units** on that fund → enter the amount paid and the units received. Keeper adds them to the totals, and can estimate the units from the latest NAV |
 | Bought a new fund | **+ Add fund** |
-| Dividend paid as extra units | Update **Units** from your statement. Leave **Invested** unchanged, because it isn't new money |
+| Dividend paid as extra units | **+ Add more units** with the amount left at 0, so **Invested** stays the same because it isn't new money |
 | Sold some units | Reduce **Units**, and reduce **Invested** in proportion |
 | Sold everything in a fund | **Remove** |
 
