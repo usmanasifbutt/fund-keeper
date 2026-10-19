@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { Position } from '../lib/calc';
 import type { Snapshot } from '../lib/store';
 import { estimatePast, pnlHistory, shiftDate, type PnlPoint } from '../lib/insights';
@@ -25,6 +25,25 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
   const [range, setRange] = useState('3M');
   const uid = useId().replace(/:/g, '');
   const [active, setActive] = useState<number | null>(null);
+  const plotRef = useRef<HTMLDivElement>(null);
+
+  // Close the tooltip when tapping anywhere outside the chart, scrolling the page, or pressing Escape.
+  useEffect(() => {
+    if (active === null) return;
+    const close = () => setActive(null);
+    const onPointerDown = (e: PointerEvent) => {
+      if (!plotRef.current?.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', close, { passive: true });
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', close);
+    };
+  }, [active]);
 
   const pts = useMemo(() => {
     if (all.length < 2) return all;
@@ -96,7 +115,7 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
           <div className="readout-change"><b className={tone(change)}>{rs(change, true)}</b> {changeLabel}</div>
         )}
       </div>
-      <div className="chart-plot">
+      <div className="chart-plot" ref={plotRef}>
       <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img"
         aria-label={`Total profit and loss from ${dateLabel(pts[0].date)} to ${dateLabel(pts[pts.length - 1].date)}, between ${rs(Math.min(...values), true)} and ${rs(Math.max(...values), true)}`}
         onPointerDown={onPointer} onPointerMove={e => { if (e.buttons || e.pointerType === 'mouse') onPointer(e); }}
