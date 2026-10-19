@@ -58,6 +58,15 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
   const estPart = firstActual === -1 ? pts : pts.slice(0, firstActual + 1);
   const actPart = firstActual === -1 ? [] : pts.slice(firstActual);
   const shown = pts[active ?? pts.length - 1];
+  // Change since the previous point in the full history (the previous NAV day, or the previous estimate).
+  const allIdx = all.findIndex(p => p.date === shown.date);
+  const prev = allIdx > 0 ? all[allIdx - 1] : null;
+  const change = prev ? shown.pnl - prev.pnl : null;
+  // Next NAV day (weekends and holidays included) counts as "on day"; longer gaps say since when.
+  const changeLabel = prev && dayNum(shown.date) - dayNum(prev.date) <= 4 ? 'on day' : prev ? `since ${dateLabel(prev.date)}` : '';
+  const dateText = `${dateLabel(shown.date)}${shown.estimated ? ' · est.' : ''}`;
+  const tipX = (x(shown.date) / W) * 100;
+  const tipY = (y(shown.pnl) / H) * 100;
   const spansYears = pts[0].date.slice(0, 4) !== pts[pts.length - 1].date.slice(0, 4);
   const axisLabel = (iso: string) => (spansYears ? `${dateLabel(iso)} ’${iso.slice(2, 4)}` : dateLabel(iso));
   const midDate = shiftDate(pts[0].date, Math.round((t1 - t0) / 2));
@@ -82,13 +91,16 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
         </div>
       </div>
       <div className="readout" aria-live="polite">
-        <b className={tone(shown.pnl)}>{rs(shown.pnl, true)}</b>
-        <span>{dateLabel(shown.date)} {shown.date.slice(0, 4)} · {shown.estimated ? 'estimated' : 'actual'}</span>
+        <div><b className={tone(shown.pnl)}>{rs(shown.pnl, true)}</b> <span>total · {dateText}</span></div>
+        {change !== null && (
+          <div className="readout-change"><b className={tone(change)}>{rs(change, true)}</b> {changeLabel}</div>
+        )}
       </div>
+      <div className="chart-plot">
       <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img"
         aria-label={`Total profit and loss from ${dateLabel(pts[0].date)} to ${dateLabel(pts[pts.length - 1].date)}, between ${rs(Math.min(...values), true)} and ${rs(Math.max(...values), true)}`}
         onPointerDown={onPointer} onPointerMove={e => { if (e.buttons || e.pointerType === 'mouse') onPointer(e); }}
-        onPointerLeave={() => setActive(null)}>
+        onPointerLeave={e => { if (e.pointerType === 'mouse') setActive(null); }}>
         <line x1={M.left} x2={W - M.right} y1={y(0)} y2={y(0)} className="chart-zero" />
         <text x={W - M.right} y={y(0) - 4} textAnchor="end" className="chart-label">Rs 0</text>
         <defs>
@@ -110,6 +122,17 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
         {t1 - t0 >= 4 && <text x={x(midDate)} y={H - 6} textAnchor="middle" className="chart-label">{axisLabel(midDate)}</text>}
         <text x={W - M.right} y={H - 6} textAnchor="end" className="chart-label">{axisLabel(pts[pts.length - 1].date)}</text>
       </svg>
+      {active !== null && (
+        <div className={`chart-tip ${tipY < 35 ? 'below' : ''}`} role="tooltip"
+          style={{ left: `${Math.min(Math.max(tipX, 22), 78)}%`, top: `${tipY}%` }}>
+          <div className="tip-date">{dateText}</div>
+          <div className="tip-row"><span>Total</span><b className={tone(shown.pnl)}>{rs(shown.pnl, true)}</b></div>
+          {change !== null && (
+            <div className="tip-row"><span>{changeLabel === 'on day' ? 'Day' : `Since ${dateLabel(prev!.date)}`}</span><b className={tone(change)}>{rs(change, true)}</b></div>
+          )}
+        </div>
+      )}
+      </div>
       {pts.some(p => p.estimated) && (
         <p className="chart-note">
           <span>Green is above Rs 0 (profit), red is below (loss).</span>

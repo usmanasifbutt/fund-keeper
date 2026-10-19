@@ -8,9 +8,9 @@ const C = 2 * Math.PI * R;
 
 type Basis = 'invested' | 'value';
 
-/** Donut chart of each fund's share of the money invested (or of current value). */
+/** Donut chart of each fund's share of current value (default) or of the money invested. */
 export default function AllocationPie({ portfolio }: { portfolio: Portfolio }) {
-  const [basis, setBasis] = useState<Basis>('invested');
+  const [basis, setBasis] = useState<Basis>('value');
   const [active, setActive] = useState<number | null>(null);
 
   const slices = portfolio.positions
@@ -46,8 +46,8 @@ export default function AllocationPie({ portfolio }: { portfolio: Portfolio }) {
       <div className="chart-head">
         <h2 id="pie-h">Share by fund</h2>
         <div className="seg" role="group" aria-label="Measure">
-          <button type="button" aria-pressed={basis === 'invested'} className={basis === 'invested' ? 'on' : ''} onClick={() => setBasis('invested')}>Invested</button>
           <button type="button" aria-pressed={basis === 'value'} className={basis === 'value' ? 'on' : ''} onClick={() => setBasis('value')}>Value</button>
+          <button type="button" aria-pressed={basis === 'invested'} className={basis === 'invested' ? 'on' : ''} onClick={() => setBasis('invested')}>Invested</button>
         </div>
       </div>
       <div className="pie-wrap">

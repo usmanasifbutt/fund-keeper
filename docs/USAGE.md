@@ -43,9 +43,9 @@ Prices update by themselves each time you open the app (at most every 30 minutes
 
 - **Today's profit/loss:** the change on each fund's latest NAV day, added up across all funds. Funds publish their NAVs at slightly different times, so each card shows its own NAV date. A yellow date means that fund hasn't published today's NAV yet.
 - **Your funds:** swipe the cards, or use ‹ › and the dots. Tap **Reorder** to change the order.
-- **Share by fund:** switch between **Invested** (the money you put in) and **Value** (what it's worth now). Tap a slice to see its percentage.
+- **Share by fund:** shows each fund's share of your portfolio's current **Value**. Switch to **Invested** to see how the money you put in is split. Tap a slice to see its percentage.
 - **By category:** profit/loss for Equity, Money Market, Income and Asset Allocation.
-- **Profit/loss over time:** pick 1M–1Y. Tap the chart to read any point. The dashed part is estimated from MUFAP's past returns. The solid part is recorded each day you open the app. Details: [How it works](HOW-IT-WORKS.md#profitloss-over-time).
+- **Profit/loss over time:** pick 1M–1Y. Each point is your **total** profit/loss on that date, not that day's gain. Tap a point to see its total and the change on that day. The dashed part is estimated from MUFAP's past returns. The solid part is recorded each day you open the app. Details: [How it works](HOW-IT-WORKS.md#profitloss-over-time).
 
 Money market and income funds report returns as an annual rate, marked **p.a.** on the cards.
 

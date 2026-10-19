@@ -23,7 +23,7 @@ It reads the public daily prices from [MUFAP](https://www.mufap.com.pk/Industry/
 |---|---|
 | <img src="docs/images/summary.png" alt="Summary card" width="320"> | **Today, across all funds.** Today's profit/loss, how many funds went up or down, total value, amount invested and total profit/loss. |
 | <img src="docs/images/funds.png" alt="Fund card" width="320"> | **One card per fund.** Swipe sideways. Each card shows today's change, value, units, total profit/loss and the fund's month, year-to-date and 1-year returns. Cards can be reordered. |
-| <img src="docs/images/share-by-fund.png" alt="Share by fund donut chart" width="320"> | **Share by fund.** How your money is split, by amount invested or by current value. |
+| <img src="docs/images/share-by-fund.png" alt="Share by fund donut chart" width="320"> | **Share by fund.** How your money is split by current value, or by amount invested. |
 | <img src="docs/images/by-category.png" alt="Profit and loss by category" width="320"> | **By category.** Equity, Money Market, Income and Asset Allocation, each with today's and total profit/loss. |
 | <img src="docs/images/chart.png" alt="Profit/loss over time chart" width="320"> | **Profit/loss over time.** 1 month to 1 year. Green above Rs 0, red below. Loads only when you scroll to it. |
 
