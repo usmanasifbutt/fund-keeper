@@ -27,7 +27,7 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
   const [active, setActive] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
 
-  // Close the tooltip when tapping anywhere outside the chart, scrolling the page, or pressing Escape.
+  // Clear the selected point (back to the latest) when tapping outside the chart, scrolling, or pressing Escape.
   useEffect(() => {
     if (active === null) return;
     const close = () => setActive(null);
@@ -84,8 +84,6 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
   // Next NAV day (weekends and holidays included) counts as "on day"; longer gaps say since when.
   const changeLabel = prev && dayNum(shown.date) - dayNum(prev.date) <= 4 ? 'on day' : prev ? `since ${dateLabel(prev.date)}` : '';
   const dateText = `${dateLabel(shown.date)}${shown.estimated ? ' · est.' : ''}`;
-  const tipX = (x(shown.date) / W) * 100;
-  const tipY = (y(shown.pnl) / H) * 100;
   const spansYears = pts[0].date.slice(0, 4) !== pts[pts.length - 1].date.slice(0, 4);
   const axisLabel = (iso: string) => (spansYears ? `${dateLabel(iso)} ’${iso.slice(2, 4)}` : dateLabel(iso));
   const midDate = shiftDate(pts[0].date, Math.round((t1 - t0) / 2));
@@ -141,16 +139,6 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
         {t1 - t0 >= 4 && <text x={x(midDate)} y={H - 6} textAnchor="middle" className="chart-label">{axisLabel(midDate)}</text>}
         <text x={W - M.right} y={H - 6} textAnchor="end" className="chart-label">{axisLabel(pts[pts.length - 1].date)}</text>
       </svg>
-      {active !== null && (
-        <div className={`chart-tip ${tipY < 35 ? 'below' : ''}`} role="tooltip"
-          style={{ left: `${Math.min(Math.max(tipX, 22), 78)}%`, top: `${tipY}%` }}>
-          <div className="tip-date">{dateText}</div>
-          <div className="tip-row"><span>Total</span><b className={tone(shown.pnl)}>{rs(shown.pnl, true)}</b></div>
-          {change !== null && (
-            <div className="tip-row"><span>{changeLabel === 'on day' ? 'Day' : `Since ${dateLabel(prev!.date)}`}</span><b className={tone(change)}>{rs(change, true)}</b></div>
-          )}
-        </div>
-      )}
       </div>
       {pts.some(p => p.estimated) && (
         <p className="chart-note">

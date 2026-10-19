@@ -277,16 +277,7 @@ input[type="date"] {
 .link-btn { background: none; border: 0; padding: 0; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; }
 .row-added { font-size: .85rem; }
 
-/* Chart tooltip and daily change */
+/* Chart daily change */
 .readout-change { flex-basis: 100%; font-size: .85rem; color: var(--muted); }
 .readout-change b { font-size: .95rem; }
 .chart-plot { position: relative; }
-.chart-tip {
-  position: absolute; transform: translate(-50%, calc(-100% - 12px)); pointer-events: none; z-index: 2;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
-  box-shadow: 0 6px 18px rgb(0 0 0 / .18); white-space: nowrap; display: grid; gap: 3px; font-size: .8rem;
-}
-.chart-tip.below { transform: translate(-50%, 12px); }
-.tip-date { color: var(--muted); font-size: .74rem; }
-.tip-row { display: flex; justify-content: space-between; gap: 12px; }
-.tip-row b { font-variant-numeric: tabular-nums; }
