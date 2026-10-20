@@ -21,6 +21,8 @@ export interface Position {
   dayPct: number | null;
   total: number;
   totalPct: number | null;
+  /** True when the fund's NAV is 2+ working days behind the newest NAV, so its day change is old news */
+  stale: boolean;
 }
 
 export interface Portfolio {
@@ -35,6 +37,24 @@ export interface Portfolio {
   date: string;
   /** True when held funds have different NAV dates */
   mixedDates: boolean;
+  /** Funds left out of today's total because their NAV hasn't been updated */
+  staleCount: number;
+}
+
+/** A fund this many working days behind the newest NAV is treated as not updated. */
+export const STALE_WORKING_DAYS = 2;
+
+/** Working days (Mon–Fri) after `from`, up to and including `to`. Both are YYYY-MM-DD. */
+export function workingDaysAfter(from: string, to: string): number {
+  let n = 0;
+  const d = new Date(`${from}T00:00:00Z`);
+  const end = new Date(`${to}T00:00:00Z`);
+  while (d < end) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const wd = d.getUTCDay();
+    if (wd !== 0 && wd !== 6) n += 1;
+  }
+  return n;
 }
 
 /** One-day return as a fraction. Annualized returns are converted with MUFAP's 365-day convention. */
@@ -58,13 +78,20 @@ export function computePortfolio(holdings: Holding[], fundsById: Map<string, Fun
       dayPct: d === null ? null : d * 100,
       total: value - holding.invested,
       totalPct: holding.invested > 0 ? (value / holding.invested - 1) * 100 : null,
+      stale: false,
     };
   });
+  const dates = [...new Set(positions.map(p => p.fund?.date).filter((d): d is string => !!d))].sort();
+  const latest = dates[dates.length - 1] ?? '';
+  for (const p of positions) {
+    p.stale = !!p.fund && workingDaysAfter(p.fund.date, latest) >= STALE_WORKING_DAYS;
+  }
+  // Today's change counts only funds that have published a recent NAV.
+  const current = positions.filter(p => !p.stale);
   const value = sum(positions.map(p => p.value));
   const invested = sum(positions.map(p => p.holding.invested));
-  const day = sum(positions.map(p => p.day ?? 0));
-  const prev = value - day;
-  const dates = [...new Set(positions.map(p => p.fund?.date).filter((d): d is string => !!d))].sort();
+  const day = sum(current.map(p => p.day ?? 0));
+  const prev = sum(current.map(p => p.value)) - day;
   return {
     positions,
     value,
@@ -73,8 +100,9 @@ export function computePortfolio(holdings: Holding[], fundsById: Map<string, Fun
     dayPct: prev > 0 ? (day / prev) * 100 : 0,
     total: value - invested,
     totalPct: invested > 0 ? (value / invested - 1) * 100 : 0,
-    date: dates[dates.length - 1] ?? '',
+    date: latest,
     mixedDates: dates.length > 1,
+    staleCount: positions.length - current.length,
   };
 }
 

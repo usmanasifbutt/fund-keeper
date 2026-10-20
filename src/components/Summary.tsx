@@ -2,22 +2,30 @@ import type { Portfolio } from '../lib/calc';
 import { dateLabel, pct, rs, tone } from '../lib/format';
 
 export default function Summary({ portfolio: p }: { portfolio: Portfolio }) {
-  const up = p.positions.filter(x => (x.day ?? 0) > 0.5).length;
-  const down = p.positions.filter(x => (x.day ?? 0) < -0.5).length;
+  const current = p.positions.filter(x => !x.stale);
+  const stale = p.positions.filter(x => x.stale);
+  const up = current.filter(x => (x.day ?? 0) > 0.5).length;
+  const down = current.filter(x => (x.day ?? 0) < -0.5).length;
+  const flat = current.length - up - down;
   return (
     <section className="summary" aria-label="Portfolio summary">
       <div className="summary-label">
-        Today's profit/loss · all {p.positions.length} fund{p.positions.length === 1 ? '' : 's'}
+        Today's profit/loss · {stale.length ? `${current.length} of ${p.positions.length}` : `all ${p.positions.length}`} fund{p.positions.length === 1 ? '' : 's'}
         {!p.mixedDates && p.date ? ` · NAV ${dateLabel(p.date)}` : ''}
       </div>
       <div className={`summary-day ${tone(p.day)}`}>
         {rs(p.day, true)} <span>{pct(p.dayPct)}</span>
       </div>
-      {p.positions.length > 1 && (
+      {current.length > 1 && (
         <div className="summary-split">
           <span className="gain">{up} up</span> · <span className="loss">{down} down</span>
-          {p.positions.length - up - down > 0 && <> · {p.positions.length - up - down} flat</>}
+          {flat > 0 && <> · {flat} flat</>}
         </div>
+      )}
+      {stale.length > 0 && (
+        <p className="summary-stale">
+          Not counted today: {stale.map(x => `${x.fund!.name} (no new NAV since ${dateLabel(x.fund!.date)})`).join(', ')}.
+        </p>
       )}
       <dl className="kpis">
         <div><dt>Value</dt><dd>{rs(p.value)}</dd></div>

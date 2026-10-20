@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computePortfolio, dailyReturn } from './calc';
+import { computePortfolio, dailyReturn, workingDaysAfter } from './calc';
 import type { Fund } from './mufap';
 
 const fund = (p: Partial<Fund> & Pick<Fund, 'id' | 'nav' | 'basis' | 'date'>, d1: number | null): Fund => ({
@@ -54,5 +54,40 @@ describe('computePortfolio', () => {
     expect(q.positions[0].fund).toBeNull();
     expect(q.value).toBe(0);
     expect(q.positions[0].day).toBeNull();
+  });
+});
+
+describe('funds without a recent NAV', () => {
+  it('counts working days only', () => {
+    expect(workingDaysAfter('2026-10-15', '2026-10-20')).toBe(3); // Fri, Mon, Tue
+    expect(workingDaysAfter('2026-10-16', '2026-10-18')).toBe(0); // weekend only
+    expect(workingDaysAfter('2026-10-19', '2026-10-20')).toBe(1);
+  });
+
+  it("leaves a fund 2+ working days behind out of today's total, but keeps its value", () => {
+    const old = fund({ id: 'AISF', nav: 28.89, basis: 'absolute', date: '2026-10-15' }, 0.59);
+    const fresh = fund({ id: 'MCF', nav: 53.177, basis: 'annualized', date: '2026-10-20' }, 10.95);
+    const p = computePortfolio(
+      [
+        { fundId: 'AISF', name: 'Alhamra', units: 1000, invested: 28000 },
+        { fundId: 'MCF', name: 'Meezan Cash', units: 1000, invested: 53000 },
+      ],
+      new Map([old, fresh].map(f => [f.id, f])),
+    );
+    expect(p.positions[0].stale).toBe(true);
+    expect(p.positions[1].stale).toBe(false);
+    expect(p.staleCount).toBe(1);
+    expect(p.day).toBeCloseTo(p.positions[1].day!, 10); // only Meezan Cash counts today
+    expect(p.value).toBeCloseTo(28890 + 53177, 6); // value still includes both
+  });
+
+  it('keeps a fund one working day behind (e.g. money market funds published a day ahead)', () => {
+    const a = fund({ id: 'EQ', nav: 10, basis: 'absolute', date: '2026-10-19' }, 1);
+    const b = fund({ id: 'MM', nav: 10, basis: 'annualized', date: '2026-10-20' }, 10);
+    const p = computePortfolio(
+      [{ fundId: 'EQ', name: 'EQ', units: 1, invested: 9 }, { fundId: 'MM', name: 'MM', units: 1, invested: 9 }],
+      new Map([a, b].map(f => [f.id, f])),
+    );
+    expect(p.staleCount).toBe(0);
   });
 });

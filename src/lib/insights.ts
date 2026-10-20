@@ -37,7 +37,7 @@ export function byCategory(p: Portfolio): CategoryRow[] {
     row.funds += 1;
     row.value += pos.value;
     row.invested += pos.holding.invested;
-    row.day += pos.day ?? 0;
+    if (!pos.stale) row.day += pos.day ?? 0; // funds without a recent NAV don't count towards today
     rows.set(group, row);
   }
   return [...rows.values()]
