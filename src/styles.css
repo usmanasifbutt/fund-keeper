@@ -283,4 +283,4 @@ input[type="date"] {
 .chart-plot { position: relative; }
 
 /* Funds without a recent NAV */
-.summary-stale { font-size: .78rem; color: var(--warn); background: var(--warn-soft); padding: 6px 10px; border-radius: 8px; }
+.summary-split .waiting { color: var(--warn); }

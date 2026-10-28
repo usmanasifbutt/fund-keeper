@@ -27,7 +27,8 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
   const [active, setActive] = useState<number | null>(null);
   const plotRef = useRef<HTMLDivElement>(null);
 
-  // Clear the selected point (back to the latest) when tapping outside the chart, scrolling, or pressing Escape.
+  // Clear the selected point (back to the latest) when tapping outside the chart or pressing Escape.
+  // Not on scroll: a finger sliding along the chart nudges the page, which made the readout flicker.
   useEffect(() => {
     if (active === null) return;
     const close = () => setActive(null);
@@ -37,11 +38,9 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKey);
-    window.addEventListener('scroll', close, { passive: true });
     return () => {
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKey);
-      window.removeEventListener('scroll', close);
     };
   }, [active]);
 
@@ -109,9 +108,10 @@ export default function PnlChart({ positions, snapshots }: { positions: Position
       </div>
       <div className="readout" aria-live="polite">
         <div><b className={tone(shown.pnl)}>{rs(shown.pnl, true)}</b> <span>total · {dateText}</span></div>
-        {change !== null && (
-          <div className="readout-change"><b className={tone(change)}>{rs(change, true)}</b> {changeLabel}</div>
-        )}
+        {/* Always rendered (hidden for the first point) so the chart doesn't jump when the line is missing. */}
+        <div className="readout-change" style={change === null ? { visibility: 'hidden' } : undefined}>
+          <b className={tone(change)}>{rs(change ?? 0, true)}</b> {change === null ? 'on day' : changeLabel}
+        </div>
       </div>
       <div className="chart-plot" ref={plotRef}>
       <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img"

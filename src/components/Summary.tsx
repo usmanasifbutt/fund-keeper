@@ -11,22 +11,18 @@ export default function Summary({ portfolio: p }: { portfolio: Portfolio }) {
     <section className="summary" aria-label="Portfolio summary">
       <div className="summary-label">
         Today's profit/loss · {dateLabel(p.today)}
-        {p.positions.length > 1 ? ` · ${current.length} of ${p.positions.length} funds updated` : ''}
       </div>
       <div className={`summary-day ${tone(p.day)}`}>
         {rs(p.day, true)} <span>{pct(p.dayPct)}</span>
       </div>
-      {current.length > 1 && (
+      {(p.positions.length > 1 || stale.length > 0) && (
         <div className="summary-split">
           <span className="gain">{up} up</span> · <span className="loss">{down} down</span>
           {flat > 0 && <> · {flat} flat</>}
+          {stale.length > 0 && (
+            <> · <span className="waiting" title={`Waiting for today's NAV: ${stale.map(x => x.fund?.name ?? x.holding.name).join(', ')}`}>{stale.length} waiting</span></>
+          )}
         </div>
-      )}
-      {stale.length > 0 && (
-        <p className="summary-stale">
-          {current.length === 0 ? `No fund has published its ${dateLabel(p.today)} NAV yet. ` : ''}
-          Waiting for today's NAV: {stale.map(x => x.fund ? `${x.fund.name} (last ${dateLabel(x.fund.date)})` : x.holding.name).join(', ')}.
-        </p>
       )}
       <dl className="kpis">
         <div><dt>Value</dt><dd>{rs(p.value)}</dd></div>
