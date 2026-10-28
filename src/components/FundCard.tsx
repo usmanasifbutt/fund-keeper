@@ -1,7 +1,7 @@
 import type { Position } from '../lib/calc';
 import { dateLabel, pct, rs, tone, units } from '../lib/format';
 
-export default function FundCard({ position: p, latestDate }: { position: Position; latestDate: string }) {
+export default function FundCard({ position: p }: { position: Position }) {
   const f = p.fund;
   if (!f) {
     return (
@@ -12,20 +12,19 @@ export default function FundCard({ position: p, latestDate }: { position: Positi
     );
   }
   const pa = f.basis === 'annualized' ? ' p.a.' : '';
-  const stale = latestDate && f.date < latestDate;
   return (
     <article className="card">
       <header className="card-head">
         <h3>{f.name}</h3>
         <div className="card-meta">
           {f.category} · NAV {f.nav.toFixed(4)}
-          <span className={stale ? 'chip chip-warn' : 'chip'}>{dateLabel(f.date)}</span>
+          <span className={p.stale ? 'chip chip-warn' : 'chip'}>{dateLabel(f.date)}</span>
         </div>
         {p.holding.since && <div className="since">Holding since {dateLabel(p.holding.since)} {p.holding.since.slice(0, 4)}</div>}
       </header>
       <dl className="card-grid">
         {p.stale ? (
-          <div><dt>Today</dt><dd className="muted">No update<small>Last: {p.day === null ? '–' : rs(p.day, true)} on {dateLabel(f.date)}</small></dd></div>
+          <div><dt>Today</dt><dd className="muted">Not yet<small>Last: {p.day === null ? '–' : rs(p.day, true)} on {dateLabel(f.date)}</small></dd></div>
         ) : (
           <div><dt>Today</dt><dd className={tone(p.day)}>{p.day === null ? '–' : rs(p.day, true)}<small>{pct(p.dayPct, f.basis === 'annualized' ? 3 : 2)}</small></dd></div>
         )}

@@ -1,10 +1,10 @@
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { computePortfolio, STALE_WORKING_DAYS, type Holding } from './lib/calc';
+import { computePortfolio, type Holding } from './lib/calc';
 import { fetchMarket, type Fund, type Market } from './lib/mufap';
 import {
   loadHoldings, loadMarket, loadSnapshots, recordSnapshot, requestPersistence, saveHoldings, saveMarket,
 } from './lib/store';
-import { dateLabel, timeAgo } from './lib/format';
+import { timeAgo } from './lib/format';
 import Summary from './components/Summary';
 import FundStrip from './components/FundStrip';
 import CategoryBreakdown from './components/CategoryBreakdown';
@@ -162,13 +162,9 @@ export default function App() {
             <Summary portfolio={portfolio} />
             <FundStrip
               positions={portfolio.positions}
-              latestDate={portfolio.date}
               onEdit={() => setView('edit')}
               onReorder={onReorder}
             />
-            {portfolio.mixedDates && (
-              <p className="note">Your funds have different NAV dates; each card shows its own. Today's total includes each fund's latest day ({dateLabel(portfolio.date)} is the newest), except funds with no new NAV for {STALE_WORKING_DAYS} or more working days.</p>
-            )}
             <AllocationPie portfolio={portfolio} />
             <CategoryBreakdown portfolio={portfolio} />
             <LazySection height={300} label="profit/loss chart">

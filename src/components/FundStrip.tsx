@@ -5,14 +5,13 @@ import FundCard from './FundCard';
 
 interface Props {
   positions: Position[];
-  latestDate: string;
   onEdit: () => void;
   /** Called with fund IDs in the new order */
   onReorder: (fundIds: string[]) => void;
 }
 
 /** Fund cards in a swipeable row, with a reorder mode that lists them vertically with up/down buttons. */
-export default function FundStrip({ positions, latestDate, onEdit, onReorder }: Props) {
+export default function FundStrip({ positions, onEdit, onReorder }: Props) {
   const [reordering, setReordering] = useState(false);
   const [order, setOrder] = useState<string[]>([]);
   const [index, setIndex] = useState(0);
@@ -86,7 +85,7 @@ export default function FundStrip({ positions, latestDate, onEdit, onReorder }: 
       ) : (
         <>
           <div className={`strip ${positions.length === 1 ? 'strip-single' : ''}`} ref={strip} onScroll={onScroll}>
-            {positions.map(p => <FundCard key={p.holding.fundId} position={p} latestDate={latestDate} />)}
+            {positions.map(p => <FundCard key={p.holding.fundId} position={p} />)}
           </div>
           {positions.length > 1 && (
             <div className="strip-nav">

@@ -10,8 +10,8 @@ export default function Summary({ portfolio: p }: { portfolio: Portfolio }) {
   return (
     <section className="summary" aria-label="Portfolio summary">
       <div className="summary-label">
-        Today's profit/loss · {stale.length ? `${current.length} of ${p.positions.length}` : `all ${p.positions.length}`} fund{p.positions.length === 1 ? '' : 's'}
-        {!p.mixedDates && p.date ? ` · NAV ${dateLabel(p.date)}` : ''}
+        Today's profit/loss · {dateLabel(p.today)}
+        {p.positions.length > 1 ? ` · ${current.length} of ${p.positions.length} funds updated` : ''}
       </div>
       <div className={`summary-day ${tone(p.day)}`}>
         {rs(p.day, true)} <span>{pct(p.dayPct)}</span>
@@ -24,7 +24,8 @@ export default function Summary({ portfolio: p }: { portfolio: Portfolio }) {
       )}
       {stale.length > 0 && (
         <p className="summary-stale">
-          Not counted today: {stale.map(x => `${x.fund!.name} (no new NAV since ${dateLabel(x.fund!.date)})`).join(', ')}.
+          {current.length === 0 ? `No fund has published its ${dateLabel(p.today)} NAV yet. ` : ''}
+          Waiting for today's NAV: {stale.map(x => x.fund ? `${x.fund.name} (last ${dateLabel(x.fund.date)})` : x.holding.name).join(', ')}.
         </p>
       )}
       <dl className="kpis">
