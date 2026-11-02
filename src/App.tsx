@@ -2,7 +2,7 @@ import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { computePortfolio, type Holding } from './lib/calc';
 import { fetchMarket, type Fund, type Market } from './lib/mufap';
 import {
-  loadHoldings, loadMarket, loadSnapshots, recordSnapshot, requestPersistence, saveHoldings, saveMarket,
+  loadChanges, loadHoldings, loadMarket, loadSnapshots, recordChanges, recordSnapshot, requestPersistence, saveHoldings, saveMarket,
 } from './lib/store';
 import { timeAgo } from './lib/format';
 import Summary from './components/Summary';
@@ -32,6 +32,7 @@ export default function App() {
   const [holdings, setHoldings] = useState<Holding[]>(() => (isDemo() ? DEMO_HOLDINGS : loadHoldings()));
   const [market, setMarket] = useState<Market | null>(loadMarket);
   const [snapshots, setSnapshots] = useState(loadSnapshots);
+  const [changes, setChanges] = useState(() => (isDemo() ? {} : loadChanges()));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('home');
@@ -68,7 +69,14 @@ export default function App() {
   }, [refresh]);
 
   const fundsById = useMemo(() => new Map<string, Fund>((market?.funds ?? []).map(f => [f.id, f])), [market]);
-  const portfolio = useMemo(() => computePortfolio(holdings, fundsById), [holdings, fundsById]);
+  const portfolio = useMemo(() => computePortfolio(holdings, fundsById, undefined, changes), [holdings, fundsById, changes]);
+
+  // MUFAP only lists each fund's newest change, so keep them to be able to show a past day later.
+  useEffect(() => {
+    if (demo) return;
+    const held = holdings.map(h => fundsById.get(h.fundId)).filter((f): f is Fund => !!f);
+    if (held.length) setChanges(recordChanges(held));
+  }, [demo, holdings, fundsById]);
 
   // Keep one value record per NAV date for the chart, once every held fund has a price.
   useEffect(() => {

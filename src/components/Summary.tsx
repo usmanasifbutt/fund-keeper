@@ -10,9 +10,7 @@ export default function Summary({ portfolio: p }: { portfolio: Portfolio }) {
   return (
     <section className="summary" aria-label="Portfolio summary">
       <div className="summary-label">
-        {p.dayIsToday
-          ? `Today's profit/loss · ${dateLabel(p.today)}`
-          : `Latest profit/loss · ${p.dayFrom !== p.date ? `${dateLabel(p.dayFrom)} – ` : ''}${dateLabel(p.date)}`}
+        {p.dayIsToday ? "Today's" : 'Latest'} profit/loss · {dateLabel(p.dayDate)}
       </div>
       <div className={`summary-day ${tone(p.day)}`}>
         {rs(p.day, true)} <span>{pct(p.dayPct)}</span>

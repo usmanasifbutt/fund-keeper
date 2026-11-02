@@ -15,13 +15,15 @@ export interface Position {
   holding: Holding;
   fund: Fund | null;
   value: number;
-  /** Rupee change on the fund's latest NAV day */
+  /** Rupee change on `dayDate` */
   day: number | null;
-  /** Percent change on the fund's latest NAV day */
+  /** Percent change on `dayDate` */
   dayPct: number | null;
+  /** The date `day` refers to: the portfolio's day if the fund has it, otherwise the fund's latest NAV date */
+  dayDate: string;
   total: number;
   totalPct: number | null;
-  /** True when the fund's day change is left out of the portfolio's day total (see computePortfolio) */
+  /** True when the fund has no change for the portfolio's day, so it's left out of the day total */
   stale: boolean;
 }
 
@@ -37,32 +39,36 @@ export interface Portfolio {
   date: string;
   /** True when held funds have different NAV dates */
   mixedDates: boolean;
-  /** Funds left out of the day total because their NAV is behind */
+  /** Funds left out of the day total because they have no change for that date */
   staleCount: number;
   /** The phone's date, YYYY-MM-DD */
   today: string;
-  /** True when the day total is for today; false when no fund has today's NAV and it shows the latest changes */
+  /** True when the day total is for today */
   dayIsToday: boolean;
-  /** Oldest NAV date counted in the day total (equals `date` unless counted funds differ) */
-  dayFrom: string;
+  /** The single date the day total is for */
+  dayDate: string;
 }
+
+/** A fund's NAV and one-day return (as a fraction) on a past date. */
+export interface DayChange {
+  nav: number;
+  d: number;
+}
+
+/** Past daily changes saved on this phone, by fund ID then date, because MUFAP only lists the newest one. */
+export type ChangeLog = Record<string, Record<string, DayChange>>;
 
 /** Today's date on this device as YYYY-MM-DD (the phone's local time, i.e. Pakistan time for you). */
 export function localToday(): string {
   return new Date().toLocaleDateString('en-CA');
 }
 
-/** Working days (Mon–Fri) after `from`, up to and including `to`. Both are YYYY-MM-DD. */
-export function workingDaysAfter(from: string, to: string): number {
-  let n = 0;
-  const d = new Date(`${from}T00:00:00Z`);
-  const end = new Date(`${to}T00:00:00Z`);
-  while (d < end) {
-    d.setUTCDate(d.getUTCDate() + 1);
-    const wd = d.getUTCDay();
-    if (wd !== 0 && wd !== 6) n += 1;
-  }
-  return n;
+/** The last Monday–Friday before `iso` (YYYY-MM-DD). Public holidays aren't known. */
+export function previousWorkingDay(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  do d.setUTCDate(d.getUTCDate() - 1);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  return d.toISOString().slice(0, 10);
 }
 
 /** One-day return as a fraction. Annualized returns are converted with MUFAP's 365-day convention. */
@@ -72,52 +78,78 @@ export function dailyReturn(fund: Fund): number | null {
   return fund.basis === 'annualized' ? r / 100 / 365 : r / 100;
 }
 
-export function computePortfolio(holdings: Holding[], fundsById: Map<string, Fund>, today = localToday()): Portfolio {
-  const positions = holdings.map((holding): Position => {
-    const fund = fundsById.get(holding.fundId) ?? null;
+export function computePortfolio(
+  holdings: Holding[],
+  fundsById: Map<string, Fund>,
+  today = localToday(),
+  log: ChangeLog = {},
+): Portfolio {
+  const change = (units: number, c: DayChange) => {
+    const before = c.nav / (1 + c.d);
+    return { day: units * (c.nav - before), base: units * before, dayPct: c.d * 100 };
+  };
+  const latestChange = (fund: Fund): DayChange | null => {
+    const d = dailyReturn(fund);
+    return d === null ? null : { nav: fund.nav, d };
+  };
+
+  const funds = holdings.map(h => fundsById.get(h.fundId) ?? null);
+  const dates = [...new Set(funds.map(f => f?.date).filter((d): d is string => !!d))].sort();
+  const latest = dates[dates.length - 1] ?? '';
+
+  // A fund's change on one date: its newest figure if that's the date, otherwise what this phone saved.
+  const changeOn = (fund: Fund | null, date: string): DayChange | null => {
+    if (!fund) return null;
+    if (fund.date === date) return latestChange(fund);
+    return log[fund.id]?.[date] ?? null;
+  };
+
+  // The day total is always for one date: today if any fund has it, otherwise the last working day,
+  // otherwise (a holiday, or nothing saved for that day) the newest date any fund has.
+  const dayIsToday = funds.some(f => f && f.date >= today);
+  let dayDate = dayIsToday ? today : previousWorkingDay(today);
+  if (!dayIsToday && !funds.some(f => changeOn(f, dayDate))) dayDate = latest;
+
+  let day = 0;
+  let base = 0;
+  const positions = holdings.map((holding, i): Position => {
+    const fund = funds[i];
     const value = fund ? holding.units * fund.nav : 0;
-    const d = fund ? dailyReturn(fund) : null;
-    const day = fund && d !== null ? holding.units * (fund.nav - fund.nav / (1 + d)) : null;
+    const counted = fund && dayIsToday && fund.date >= today ? latestChange(fund) : changeOn(fund, dayDate);
+    const shown = counted ?? (fund ? latestChange(fund) : null);
+    const c = shown ? change(holding.units, shown) : null;
+    if (counted && c) {
+      day += c.day;
+      base += c.base;
+    }
     return {
       holding,
       fund,
       value,
-      day,
-      dayPct: d === null ? null : d * 100,
+      day: c ? c.day : null,
+      dayPct: c ? c.dayPct : null,
+      dayDate: counted ? dayDate : fund?.date ?? '',
       total: value - holding.invested,
       totalPct: holding.invested > 0 ? (value / holding.invested - 1) * 100 : null,
-      stale: false,
+      stale: !counted,
     };
   });
-  const dates = [...new Set(positions.map(p => p.fund?.date).filter((d): d is string => !!d))].sort();
-  const latest = dates[dates.length - 1] ?? '';
-  // Any fund with today's NAV: the day total is today's, from those funds only.
-  // None yet (morning, weekend): show the latest changes, leaving out funds 2+ working days behind.
-  const dayIsToday = positions.some(p => p.fund && p.fund.date >= today);
-  for (const p of positions) {
-    if (!p.fund) p.stale = true;
-    else if (dayIsToday) p.stale = p.fund.date < today;
-    else p.stale = workingDaysAfter(p.fund.date, latest) >= 2;
-  }
-  const current = positions.filter(p => !p.stale);
   const value = sum(positions.map(p => p.value));
   const invested = sum(positions.map(p => p.holding.invested));
-  const day = sum(current.map(p => p.day ?? 0));
-  const prev = sum(current.map(p => p.value)) - day;
   return {
     positions,
     value,
     invested,
     day,
-    dayPct: prev > 0 ? (day / prev) * 100 : 0,
+    dayPct: base > 0 ? (day / base) * 100 : 0,
     total: value - invested,
     totalPct: invested > 0 ? (value / invested - 1) * 100 : 0,
     date: latest,
     mixedDates: dates.length > 1,
-    staleCount: positions.length - current.length,
+    staleCount: positions.filter(p => p.stale).length,
     today,
     dayIsToday,
-    dayFrom: current.map(p => p.fund?.date ?? latest).sort()[0] ?? latest,
+    dayDate,
   };
 }
 

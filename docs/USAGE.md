@@ -41,7 +41,7 @@ Prices update by themselves each time you open the app (at most every 30 minutes
 
 ## Read the home screen
 
-- **Today's profit/loss:** if at least one fund has published a NAV for today, this counts only the funds updated today, and the others show **Not yet**. If none has yet (mornings and weekends), it says **Latest profit/loss** and shows each fund's most recent change with its date. A fund 2 or more working days behind is left out. Its value still counts in your totals.
+- **Today's profit/loss:** always for one date. If at least one fund has published a NAV for today, it counts only those funds, and the others show **Not yet**. If none has (mornings and weekends), it says **Latest profit/loss** and shows the last working day, such as Friday on a Monday morning. Funds without a figure for that date show **Not yet**; their value still counts in your totals.
 - **Your funds:** swipe the cards, or use ‹ › and the dots. Tap **Reorder** to change the order.
 - **Share by fund:** shows each fund's share of your portfolio's current **Value**. Switch to **Invested** to see how the money you put in is split. Tap a slice to see its percentage.
 - **By category:** profit/loss for Equity, Money Market, Income and Asset Allocation.

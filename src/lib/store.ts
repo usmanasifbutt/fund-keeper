@@ -1,5 +1,5 @@
-import type { Holding } from './calc';
-import type { Market } from './mufap';
+import { dailyReturn, type ChangeLog, type Holding } from './calc';
+import type { Fund, Market } from './mufap';
 
 /** Everything lives in this phone's browser storage. Nothing is sent anywhere. */
 
@@ -7,6 +7,7 @@ const KEYS = {
   holdings: 'keeper.holdings.v1',
   market: 'keeper.market.v1',
   snapshots: 'keeper.snapshots.v1',
+  changes: 'keeper.changes.v1',
 };
 
 export interface Snapshot {
@@ -58,6 +59,21 @@ export function recordSnapshot(s: Snapshot): Snapshot[] {
   const trimmed = list.slice(-730);
   write(KEYS.snapshots, trimmed);
   return trimmed;
+}
+
+export const loadChanges = () => read<ChangeLog>(KEYS.changes, {});
+
+/** Saves each fund's newest daily change, keeping the last 14 dates per fund. */
+export function recordChanges(funds: Fund[]): ChangeLog {
+  const log = loadChanges();
+  for (const f of funds) {
+    const d = dailyReturn(f);
+    if (d === null) continue;
+    const dates = { ...log[f.id], [f.date]: { nav: f.nav, d } };
+    log[f.id] = Object.fromEntries(Object.entries(dates).sort(([a], [b]) => a.localeCompare(b)).slice(-14));
+  }
+  write(KEYS.changes, log);
+  return log;
 }
 
 export function makeBackup(): Backup {

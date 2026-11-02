@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computePortfolio, dailyReturn, workingDaysAfter } from './calc';
+import { computePortfolio, dailyReturn, previousWorkingDay } from './calc';
 import type { Fund } from './mufap';
 
 const fund = (p: Partial<Fund> & Pick<Fund, 'id' | 'nav' | 'basis' | 'date'>, d1: number | null): Fund => ({
@@ -64,8 +64,8 @@ describe("today's total", () => {
     { fundId: 'AISF', name: 'Alhamra', units: 1000, invested: 28000 },
     { fundId: 'MCF', name: 'Meezan Cash', units: 1000, invested: 53000 },
   ];
-  const run = (a: string, b: string, today: string) =>
-    computePortfolio(holdings, new Map([eq(a), mm(b)].map(f => [f.id, f])), today);
+  const run = (a: string, b: string, today: string, log = {}) =>
+    computePortfolio(holdings, new Map([eq(a), mm(b)].map(f => [f.id, f])), today, log);
 
   it('counts both funds when both have published today', () => {
     const p = run('2026-10-28', '2026-10-28', '2026-10-28');
@@ -81,45 +81,52 @@ describe("today's total", () => {
     expect(p.value).toBeCloseTo(28890 + 53177, 6); // value still includes both
   });
 
-  it('shows the latest changes when no fund has published today, not 0', () => {
+  it('shows the last working day, not 0, when no fund has published today', () => {
     const p = run('2026-10-27', '2026-10-27', '2026-10-28');
     expect(p.dayIsToday).toBe(false);
+    expect(p.dayDate).toBe('2026-10-27');
     expect(p.staleCount).toBe(0);
     expect(p.day).toBeCloseTo(p.positions[0].day! + p.positions[1].day!, 10);
-    expect(p.date).toBe('2026-10-27');
   });
 
-  it('shows the last working day on a weekend', () => {
-    const p = run('2026-10-30', '2026-10-30', '2026-11-01'); // Friday's NAVs, on a Sunday
-    expect(p.dayIsToday).toBe(false);
-    expect(p.day).not.toBe(0);
-    expect(p.dayFrom).toBe('2026-10-30');
+  it("shows Friday's changes on a weekend and on Monday morning", () => {
+    for (const today of ['2026-10-31', '2026-11-01', '2026-11-02']) {
+      const p = run('2026-10-30', '2026-10-30', today);
+      expect(p.dayIsToday).toBe(false);
+      expect(p.dayDate).toBe('2026-10-30');
+      expect(p.staleCount).toBe(0);
+    }
   });
 
-  it('counts a money market weekend NAV as today and leaves the equity fund waiting', () => {
+  it('counts a weekend NAV published today, with the other fund waiting', () => {
     const p = run('2026-10-30', '2026-11-01', '2026-11-01');
     expect(p.dayIsToday).toBe(true);
     expect(p.positions[0].stale).toBe(true);
     expect(p.day).toBeCloseTo(p.positions[1].day!, 10);
   });
 
-  it('leaves out a fund far behind even when none has published today', () => {
-    const p = run('2026-10-15', '2026-10-19', '2026-10-20');
-    expect(p.dayIsToday).toBe(false);
-    expect(p.positions[0].stale).toBe(true); // 2 working days behind the newest NAV
+  it("never mixes dates: uses a saved change to show Friday when a fund's newest NAV is later", () => {
+    const log = { MCF: { '2026-10-30': { nav: 53.3, d: 0.0003 } } };
+    const p = run('2026-10-29', '2026-11-01', '2026-11-02', log);
+    expect(p.dayDate).toBe('2026-10-30');
+    expect(p.positions[1].stale).toBe(false);
+    expect(p.positions[1].dayDate).toBe('2026-10-30');
+    expect(p.positions[1].day).toBeCloseTo(1000 * (53.3 - 53.3 / 1.0003), 8);
+    expect(p.positions[0].stale).toBe(true); // Alhamra has no 30 Oct NAV
+    expect(p.positions[0].dayDate).toBe('2026-10-29');
     expect(p.day).toBeCloseTo(p.positions[1].day!, 10);
   });
 
-  it('does not treat a weekend gap as being behind', () => {
-    const p = run('2026-10-30', '2026-11-01', '2026-11-02'); // Fri and Sun NAVs, on Monday morning
-    expect(p.dayIsToday).toBe(false);
-    expect(p.staleCount).toBe(0);
-    expect(p.dayFrom).toBe('2026-10-30');
-    expect(p.date).toBe('2026-11-01');
+  it('falls back to the newest single date when nothing is known for the last working day', () => {
+    const p = run('2026-10-29', '2026-11-01', '2026-11-02');
+    expect(p.dayDate).toBe('2026-11-01');
+    expect(p.positions[0].stale).toBe(true);
+    expect(p.day).toBeCloseTo(p.positions[1].day!, 10);
   });
 
-  it('counts working days only', () => {
-    expect(workingDaysAfter('2026-10-15', '2026-10-20')).toBe(3); // Fri, Mon, Tue
-    expect(workingDaysAfter('2026-10-30', '2026-11-01')).toBe(0); // weekend only
+  it('finds the previous working day', () => {
+    expect(previousWorkingDay('2026-11-02')).toBe('2026-10-30'); // Monday → Friday
+    expect(previousWorkingDay('2026-11-01')).toBe('2026-10-30'); // Sunday → Friday
+    expect(previousWorkingDay('2026-11-03')).toBe('2026-11-02'); // Tuesday → Monday
   });
 });
