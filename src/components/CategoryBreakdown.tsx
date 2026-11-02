@@ -22,7 +22,7 @@ export default function CategoryBreakdown({ portfolio }: { portfolio: Portfolio 
       <div className="cat-table" role="table" aria-label="Profit and loss by category">
         <div className="cat-row cat-headrow" role="row">
           <span role="columnheader">Category</span>
-          <span role="columnheader">Today</span>
+          <span role="columnheader">{portfolio.dayIsToday ? 'Today' : 'Latest'}</span>
           <span role="columnheader">Total P/L</span>
         </div>
         {rows.map(r => (

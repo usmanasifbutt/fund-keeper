@@ -10,7 +10,9 @@ export default function Summary({ portfolio: p }: { portfolio: Portfolio }) {
   return (
     <section className="summary" aria-label="Portfolio summary">
       <div className="summary-label">
-        Today's profit/loss · {dateLabel(p.today)}
+        {p.dayIsToday
+          ? `Today's profit/loss · ${dateLabel(p.today)}`
+          : `Latest profit/loss · ${p.dayFrom !== p.date ? `${dateLabel(p.dayFrom)} – ` : ''}${dateLabel(p.date)}`}
       </div>
       <div className={`summary-day ${tone(p.day)}`}>
         {rs(p.day, true)} <span>{pct(p.dayPct)}</span>
@@ -20,7 +22,7 @@ export default function Summary({ portfolio: p }: { portfolio: Portfolio }) {
           <span className="gain">{up} up</span> · <span className="loss">{down} down</span>
           {flat > 0 && <> · {flat} flat</>}
           {stale.length > 0 && (
-            <> · <span className="waiting" title={`Waiting for today's NAV: ${stale.map(x => x.fund?.name ?? x.holding.name).join(', ')}`}>{stale.length} waiting</span></>
+            <> · <span className="waiting" title={`Waiting for a new NAV: ${stale.map(x => x.fund?.name ?? x.holding.name).join(', ')}`}>{stale.length} waiting</span></>
           )}
         </div>
       )}

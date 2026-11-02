@@ -21,7 +21,7 @@ export interface Position {
   dayPct: number | null;
   total: number;
   totalPct: number | null;
-  /** True when the fund hasn't published a NAV for today yet, so its day change isn't today's */
+  /** True when the fund's day change is left out of the portfolio's day total (see computePortfolio) */
   stale: boolean;
 }
 
@@ -37,15 +37,32 @@ export interface Portfolio {
   date: string;
   /** True when held funds have different NAV dates */
   mixedDates: boolean;
-  /** Funds left out of today's total because they haven't published today's NAV */
+  /** Funds left out of the day total because their NAV is behind */
   staleCount: number;
-  /** The date "today" refers to, YYYY-MM-DD */
+  /** The phone's date, YYYY-MM-DD */
   today: string;
+  /** True when the day total is for today; false when no fund has today's NAV and it shows the latest changes */
+  dayIsToday: boolean;
+  /** Oldest NAV date counted in the day total (equals `date` unless counted funds differ) */
+  dayFrom: string;
 }
 
 /** Today's date on this device as YYYY-MM-DD (the phone's local time, i.e. Pakistan time for you). */
 export function localToday(): string {
   return new Date().toLocaleDateString('en-CA');
+}
+
+/** Working days (Mon–Fri) after `from`, up to and including `to`. Both are YYYY-MM-DD. */
+export function workingDaysAfter(from: string, to: string): number {
+  let n = 0;
+  const d = new Date(`${from}T00:00:00Z`);
+  const end = new Date(`${to}T00:00:00Z`);
+  while (d < end) {
+    d.setUTCDate(d.getUTCDate() + 1);
+    const wd = d.getUTCDay();
+    if (wd !== 0 && wd !== 6) n += 1;
+  }
+  return n;
 }
 
 /** One-day return as a fraction. Annualized returns are converted with MUFAP's 365-day convention. */
@@ -74,10 +91,14 @@ export function computePortfolio(holdings: Holding[], fundsById: Map<string, Fun
   });
   const dates = [...new Set(positions.map(p => p.fund?.date).filter((d): d is string => !!d))].sort();
   const latest = dates[dates.length - 1] ?? '';
+  // Any fund with today's NAV: the day total is today's, from those funds only.
+  // None yet (morning, weekend): show the latest changes, leaving out funds 2+ working days behind.
+  const dayIsToday = positions.some(p => p.fund && p.fund.date >= today);
   for (const p of positions) {
-    p.stale = !p.fund || p.fund.date < today;
+    if (!p.fund) p.stale = true;
+    else if (dayIsToday) p.stale = p.fund.date < today;
+    else p.stale = workingDaysAfter(p.fund.date, latest) >= 2;
   }
-  // Today's change counts only funds that have published today's NAV; none yet means Rs 0.
   const current = positions.filter(p => !p.stale);
   const value = sum(positions.map(p => p.value));
   const invested = sum(positions.map(p => p.holding.invested));
@@ -95,6 +116,8 @@ export function computePortfolio(holdings: Holding[], fundsById: Map<string, Fun
     mixedDates: dates.length > 1,
     staleCount: positions.length - current.length,
     today,
+    dayIsToday,
+    dayFrom: current.map(p => p.fund?.date ?? latest).sort()[0] ?? latest,
   };
 }
 

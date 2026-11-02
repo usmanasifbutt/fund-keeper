@@ -162,6 +162,7 @@ export default function App() {
             <Summary portfolio={portfolio} />
             <FundStrip
               positions={portfolio.positions}
+              dayIsToday={portfolio.dayIsToday}
               onEdit={() => setView('edit')}
               onReorder={onReorder}
             />

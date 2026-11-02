@@ -1,7 +1,7 @@
 import type { Position } from '../lib/calc';
 import { dateLabel, pct, rs, tone, units } from '../lib/format';
 
-export default function FundCard({ position: p }: { position: Position }) {
+export default function FundCard({ position: p, dayIsToday }: { position: Position; dayIsToday: boolean }) {
   const f = p.fund;
   if (!f) {
     return (
@@ -24,9 +24,9 @@ export default function FundCard({ position: p }: { position: Position }) {
       </header>
       <dl className="card-grid">
         {p.stale ? (
-          <div><dt>Today</dt><dd className="muted">Not yet<small>Last: {p.day === null ? '–' : rs(p.day, true)} on {dateLabel(f.date)}</small></dd></div>
+          <div><dt>{dayIsToday ? 'Today' : 'Latest'}</dt><dd className="muted">Not yet<small>Last: {p.day === null ? '–' : rs(p.day, true)} on {dateLabel(f.date)}</small></dd></div>
         ) : (
-          <div><dt>Today</dt><dd className={tone(p.day)}>{p.day === null ? '–' : rs(p.day, true)}<small>{pct(p.dayPct, f.basis === 'annualized' ? 3 : 2)}</small></dd></div>
+          <div><dt>{dayIsToday ? 'Today' : dateLabel(f.date)}</dt><dd className={tone(p.day)}>{p.day === null ? '–' : rs(p.day, true)}<small>{pct(p.dayPct, f.basis === 'annualized' ? 3 : 2)}</small></dd></div>
         )}
         <div><dt>Value</dt><dd>{rs(p.value)}<small>{units(p.holding.units)} units</small></dd></div>
         <div><dt>Total P/L</dt><dd className={tone(p.total)}>{rs(p.total, true)}<small>{p.holding.invested > 0 ? pct(p.totalPct) : 'Add amount invested'}</small></dd></div>

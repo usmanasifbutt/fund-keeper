@@ -5,13 +5,15 @@ import FundCard from './FundCard';
 
 interface Props {
   positions: Position[];
+  /** False when no fund has today's NAV and cards show their latest change */
+  dayIsToday: boolean;
   onEdit: () => void;
   /** Called with fund IDs in the new order */
   onReorder: (fundIds: string[]) => void;
 }
 
 /** Fund cards in a swipeable row, with a reorder mode that lists them vertically with up/down buttons. */
-export default function FundStrip({ positions, onEdit, onReorder }: Props) {
+export default function FundStrip({ positions, dayIsToday, onEdit, onReorder }: Props) {
   const [reordering, setReordering] = useState(false);
   const [order, setOrder] = useState<string[]>([]);
   const [index, setIndex] = useState(0);
@@ -85,7 +87,7 @@ export default function FundStrip({ positions, onEdit, onReorder }: Props) {
       ) : (
         <>
           <div className={`strip ${positions.length === 1 ? 'strip-single' : ''}`} ref={strip} onScroll={onScroll}>
-            {positions.map(p => <FundCard key={p.holding.fundId} position={p} />)}
+            {positions.map(p => <FundCard key={p.holding.fundId} position={p} dayIsToday={dayIsToday} />)}
           </div>
           {positions.length > 1 && (
             <div className="strip-nav">
