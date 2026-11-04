@@ -36,6 +36,7 @@ If a row is half filled, for example you typed a name but didn't pick from the l
 | Dividend paid as extra units | **+ Add more units** with the amount left at 0, so **Invested** stays the same because it isn't new money |
 | Sold some units | Reduce **Units**, and reduce **Invested** in proportion |
 | Sold everything in a fund | **Remove** |
+| MUFAP hasn't updated a fund's NAV | Edit → **Edit NAV** on that fund → enter the date and NAV. It counts like a published NAV, marked **M**, until MUFAP catches up |
 
 Prices update by themselves each time you open the app (at most every 30 minutes). Tap ⟳ to refresh now.
 

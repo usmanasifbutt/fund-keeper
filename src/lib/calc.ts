@@ -63,6 +63,43 @@ export function localToday(): string {
   return new Date().toLocaleDateString('en-CA');
 }
 
+/** A NAV entered by hand because MUFAP doesn't have that date yet. */
+export interface ManualNav {
+  date: string;
+  nav: number;
+}
+
+/** Manual NAVs by fund ID, oldest first. */
+export type ManualNavs = Record<string, ManualNav[]>;
+
+/**
+ * Lays manual NAVs over MUFAP's funds. MUFAP always wins: entries for its date or older are dropped.
+ * Returns the funds to price with, the remaining entries, and each entry's change for showing past days.
+ */
+export function applyManualNavs(funds: Fund[], manual: ManualNavs) {
+  const byId = new Map(funds.map(f => [f.id, f]));
+  const kept: ManualNavs = {};
+  const log: ChangeLog = {};
+  for (const [id, entries] of Object.entries(manual)) {
+    const fund = byId.get(id);
+    if (!fund) continue;
+    const newer = entries.filter(e => e.date > fund.date).sort((a, b) => a.date.localeCompare(b.date));
+    if (!newer.length) continue;
+    kept[id] = newer;
+    let prevNav = fund.nav;
+    let lastD = 0;
+    log[id] = {};
+    for (const e of newer) {
+      lastD = e.nav / prevNav - 1;
+      log[id][e.date] = { nav: e.nav, d: lastD };
+      prevNav = e.nav;
+    }
+    const last = newer[newer.length - 1];
+    byId.set(id, { ...fund, nav: last.nav, date: last.date, manual: true, manualD: lastD });
+  }
+  return { funds: byId, kept, log };
+}
+
 /** The last Monday–Friday before `iso` (YYYY-MM-DD). Public holidays aren't known. */
 export function previousWorkingDay(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -73,6 +110,7 @@ export function previousWorkingDay(iso: string): string {
 
 /** One-day return as a fraction. Annualized returns are converted with MUFAP's 365-day convention. */
 export function dailyReturn(fund: Fund): number | null {
+  if (fund.manualD !== undefined) return fund.manualD;
   const r = fund.returns.d1;
   if (r === null) return null;
   return fund.basis === 'annualized' ? r / 100 / 365 : r / 100;

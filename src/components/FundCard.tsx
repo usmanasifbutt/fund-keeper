@@ -19,6 +19,7 @@ export default function FundCard({ position: p, dayIsToday }: { position: Positi
         <div className="card-meta">
           {f.category} · NAV {f.nav.toFixed(4)}
           <span className={p.stale ? 'chip chip-warn' : 'chip'}>{dateLabel(f.date)}</span>
+          {f.manual && <span className="chip chip-manual" title="NAV you entered. MUFAP's replaces it once it catches up.">M</span>}
         </div>
         {p.holding.since && <div className="since">Holding since {dateLabel(p.holding.since)} {p.holding.since.slice(0, 4)}</div>}
       </header>

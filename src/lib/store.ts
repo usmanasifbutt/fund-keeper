@@ -1,4 +1,4 @@
-import { dailyReturn, type ChangeLog, type Holding } from './calc';
+import { dailyReturn, type ChangeLog, type Holding, type ManualNavs } from './calc';
 import type { Fund, Market } from './mufap';
 
 /** Everything lives in this phone's browser storage. Nothing is sent anywhere. */
@@ -8,6 +8,7 @@ const KEYS = {
   market: 'keeper.market.v1',
   snapshots: 'keeper.snapshots.v1',
   changes: 'keeper.changes.v1',
+  manualNavs: 'keeper.manualNavs.v1',
 };
 
 export interface Snapshot {
@@ -23,6 +24,7 @@ export interface Backup {
   exportedAt: string;
   holdings: Holding[];
   snapshots: Snapshot[];
+  manualNavs?: ManualNavs;
 }
 
 function read<T>(key: string, fallback: T): T {
@@ -76,8 +78,11 @@ export function recordChanges(funds: Fund[]): ChangeLog {
   return log;
 }
 
+export const loadManualNavs = () => read<ManualNavs>(KEYS.manualNavs, {});
+export const saveManualNavs = (m: ManualNavs) => write(KEYS.manualNavs, m);
+
 export function makeBackup(): Backup {
-  return { app: 'keeper', version: 1, exportedAt: new Date().toISOString(), holdings: loadHoldings(), snapshots: loadSnapshots() };
+  return { app: 'keeper', version: 1, exportedAt: new Date().toISOString(), holdings: loadHoldings(), snapshots: loadSnapshots(), manualNavs: loadManualNavs() };
 }
 
 /** Validates a backup file's contents and restores it. Throws a readable error if the file isn't a Keeper backup. */
@@ -103,6 +108,7 @@ export function restoreBackup(text: string): Backup {
     : [];
   saveHoldings(holdings);
   write(KEYS.snapshots, snapshots);
+  saveManualNavs(data.manualNavs && typeof data.manualNavs === 'object' ? data.manualNavs : {});
   return { app: 'keeper', version: 1, exportedAt: String(data.exportedAt ?? ''), holdings, snapshots };
 }
 

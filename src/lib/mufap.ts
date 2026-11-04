@@ -31,6 +31,10 @@ export interface Fund {
   nav: number;
   /** Percentages as MUFAP shows them, e.g. -1.04 means -1.04% */
   returns: FundReturns;
+  /** Set when `nav` and `date` come from a NAV you entered, not MUFAP */
+  manual?: boolean;
+  /** One-day return (fraction) worked out from a manual NAV, used instead of `returns.d1` */
+  manualD?: number;
 }
 
 export interface Market {

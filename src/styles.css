@@ -284,3 +284,9 @@ input[type="date"] {
 
 /* Funds without a recent NAV */
 .summary-split .waiting { color: var(--warn); }
+
+/* Manual NAVs */
+.chip-manual { background: var(--warn-soft); color: var(--warn); margin-left: 6px; }
+.card-meta .chip-manual { margin-left: 0; }
+.nav-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .85rem; }
+.nav-entries li { display: flex; justify-content: space-between; gap: 12px; }

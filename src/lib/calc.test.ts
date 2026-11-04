@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computePortfolio, dailyReturn, previousWorkingDay } from './calc';
+import { applyManualNavs, computePortfolio, dailyReturn, previousWorkingDay } from './calc';
 import type { Fund } from './mufap';
 
 const fund = (p: Partial<Fund> & Pick<Fund, 'id' | 'nav' | 'basis' | 'date'>, d1: number | null): Fund => ({
@@ -128,5 +128,45 @@ describe("today's total", () => {
     expect(previousWorkingDay('2026-11-02')).toBe('2026-10-30'); // Monday → Friday
     expect(previousWorkingDay('2026-11-01')).toBe('2026-10-30'); // Sunday → Friday
     expect(previousWorkingDay('2026-11-03')).toBe('2026-11-02'); // Tuesday → Monday
+  });
+});
+
+describe('manual NAVs', () => {
+  const alhamra = fund({ id: 'AISF', nav: 28.72, basis: 'absolute', date: '2026-10-29' }, 0.84);
+  const cash = fund({ id: 'MCF', nav: 53.37, basis: 'annualized', date: '2026-11-04' }, 10);
+  const holdings = [
+    { fundId: 'AISF', name: 'Alhamra', units: 1000, invested: 28000 },
+    { fundId: 'MCF', name: 'Meezan Cash', units: 1000, invested: 53000 },
+  ];
+
+  it('prices the fund with the manual NAV and works out the change from the previous NAV', () => {
+    const { funds: f } = applyManualNavs([alhamra, cash], { AISF: [{ date: '2026-11-04', nav: 29 }] });
+    const a = f.get('AISF')!;
+    expect(a).toMatchObject({ nav: 29, date: '2026-11-04', manual: true });
+    expect(dailyReturn(a)).toBeCloseTo(29 / 28.72 - 1, 10);
+    expect(f.get('MCF')!.manual).toBeUndefined();
+  });
+
+  it('counts the fund in the day total for that date', () => {
+    const { funds: f, log } = applyManualNavs([alhamra, cash], { AISF: [{ date: '2026-11-04', nav: 29 }] });
+    const p = computePortfolio(holdings, f, '2026-11-04', log);
+    expect(p.dayIsToday).toBe(true);
+    expect(p.staleCount).toBe(0);
+    expect(p.positions[0].day).toBeCloseTo(1000 * (29 - 28.72), 8);
+    expect(p.positions[0].value).toBeCloseTo(29000, 8);
+  });
+
+  it('chains several manual days, each compared with the day before', () => {
+    const { funds: f, log } = applyManualNavs([alhamra], { AISF: [{ date: '2026-11-03', nav: 30 }, { date: '2026-10-30', nav: 29 }] });
+    expect(f.get('AISF')!.nav).toBe(30);
+    expect(dailyReturn(f.get('AISF')!)).toBeCloseTo(30 / 29 - 1, 10);
+    expect(log.AISF['2026-10-30'].d).toBeCloseTo(29 / 28.72 - 1, 10);
+  });
+
+  it('drops entries once MUFAP has that date or newer', () => {
+    const { funds: f, kept } = applyManualNavs([alhamra], { AISF: [{ date: '2026-10-29', nav: 99 }, { date: '2026-10-20', nav: 99 }] });
+    expect(kept).toEqual({});
+    expect(f.get('AISF')!.nav).toBe(28.72);
+    expect(f.get('AISF')!.manual).toBeUndefined();
   });
 });

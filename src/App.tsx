@@ -1,8 +1,8 @@
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { computePortfolio, type Holding } from './lib/calc';
-import { fetchMarket, type Fund, type Market } from './lib/mufap';
+import { applyManualNavs, computePortfolio, type Holding, type ManualNavs } from './lib/calc';
+import { fetchMarket, type Market } from './lib/mufap';
 import {
-  loadChanges, loadHoldings, loadMarket, loadSnapshots, recordChanges, recordSnapshot, requestPersistence, saveHoldings, saveMarket,
+  loadChanges, loadHoldings, loadManualNavs, loadMarket, loadSnapshots, recordChanges, recordSnapshot, requestPersistence, saveHoldings, saveManualNavs, saveMarket,
 } from './lib/store';
 import { timeAgo } from './lib/format';
 import Summary from './components/Summary';
@@ -33,6 +33,7 @@ export default function App() {
   const [market, setMarket] = useState<Market | null>(loadMarket);
   const [snapshots, setSnapshots] = useState(loadSnapshots);
   const [changes, setChanges] = useState(() => (isDemo() ? {} : loadChanges()));
+  const [manualNavs, setManualNavs] = useState<ManualNavs>(() => (isDemo() ? {} : loadManualNavs()));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>('home');
@@ -68,15 +69,29 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refresh]);
 
-  const fundsById = useMemo(() => new Map<string, Fund>((market?.funds ?? []).map(f => [f.id, f])), [market]);
-  const portfolio = useMemo(() => computePortfolio(holdings, fundsById, undefined, changes), [holdings, fundsById, changes]);
+  const effective = useMemo(() => applyManualNavs(market?.funds ?? [], manualNavs), [market, manualNavs]);
+  const fundsById = effective.funds;
+  const portfolio = useMemo(() => {
+    const log = { ...changes };
+    for (const [id, dates] of Object.entries(effective.log)) log[id] = { ...log[id], ...dates };
+    return computePortfolio(holdings, fundsById, undefined, log);
+  }, [holdings, fundsById, changes, effective]);
 
   // MUFAP only lists each fund's newest change, so keep them to be able to show a past day later.
   useEffect(() => {
     if (demo) return;
-    const held = holdings.map(h => fundsById.get(h.fundId)).filter((f): f is Fund => !!f);
+    const held = (market?.funds ?? []).filter(f => holdings.some(h => h.fundId === f.id));
     if (held.length) setChanges(recordChanges(held));
-  }, [demo, holdings, fundsById]);
+  }, [demo, holdings, market]);
+
+  // Drop manual NAVs once MUFAP has caught up with them.
+  useEffect(() => {
+    if (demo || !market) return;
+    if (JSON.stringify(effective.kept) !== JSON.stringify(manualNavs)) {
+      saveManualNavs(effective.kept);
+      setManualNavs(effective.kept);
+    }
+  }, [demo, market, effective, manualNavs]);
 
   // Keep one value record per NAV date for the chart, once every held fund has a price.
   useEffect(() => {
@@ -84,9 +99,13 @@ export default function App() {
     setSnapshots(recordSnapshot({ date: portfolio.date, value: Math.round(portfolio.value), invested: Math.round(portfolio.invested) }));
   }, [holdings.length, portfolio]);
 
-  function onSaveHoldings(next: Holding[]) {
-    if (!demo) saveHoldings(next);
+  function onSaveHoldings(next: Holding[], manual: ManualNavs) {
+    if (!demo) {
+      saveHoldings(next);
+      saveManualNavs(manual);
+    }
     setHoldings(next);
+    setManualNavs(manual);
     setView('home');
   }
 
@@ -101,6 +120,7 @@ export default function App() {
       <HoldingsEditor
         funds={market?.funds ?? []}
         holdings={holdings}
+        manualNavs={effective.kept}
         loadingFunds={loading && !market}
         onSave={onSaveHoldings}
         onCancel={() => setView('home')}
@@ -112,7 +132,7 @@ export default function App() {
     return (
       <BackupView
         onBack={() => setView('home')}
-        onRestored={() => { setHoldings(loadHoldings()); setSnapshots(loadSnapshots()); setView('home'); }}
+        onRestored={() => { setHoldings(loadHoldings()); setSnapshots(loadSnapshots()); setManualNavs(loadManualNavs()); setView('home'); }}
       />
     );
   }

@@ -13,6 +13,7 @@ All of this is stored **only in your phone's browser storage** (localStorage):
 | Your holdings: fund, units, amount invested, optional first-invested date, card order | To work out your profit/loss |
 | A daily total of your portfolio's value and amount invested | To draw the profit/loss chart |
 | The last copy of MUFAP's public prices | So the app opens instantly and works offline |
+| NAVs you enter by hand | To price a fund MUFAP hasn't updated yet. Removed once MUFAP catches up |
 | The last 14 days of daily changes for the funds you hold | So the app can show the last working day's profit/loss |
 
 ## What Keeper does not do

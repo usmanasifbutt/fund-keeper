@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
-import type { Holding } from '../lib/calc';
+import type { Holding, ManualNav, ManualNavs } from '../lib/calc';
 import type { Fund } from '../lib/mufap';
 import { rs, units as fmtUnits } from '../lib/format';
 import FundPicker from './FundPicker';
 import AddPurchase from './AddPurchase';
+import NavEditor from './NavEditor';
 
 interface Row {
   key: number;
@@ -18,17 +19,22 @@ interface Row {
   added: string;
   /** What is typed in the fund search box */
   text: string;
+  /** NAVs entered by hand for this fund, oldest first */
+  manual: ManualNav[];
+  /** Whether the "Edit NAV" form is open */
+  editingNav: boolean;
 }
 
 interface Props {
   funds: Fund[];
   holdings: Holding[];
+  manualNavs: ManualNavs;
   loadingFunds: boolean;
-  onSave: (h: Holding[]) => void;
+  onSave: (h: Holding[], manual: ManualNavs) => void;
   onCancel: () => void;
 }
 
-export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, onCancel }: Props) {
+export default function HoldingsEditor({ funds, holdings, manualNavs, loadingFunds, onSave, onCancel }: Props) {
   const seq = useRef(0);
   const newRow = (h?: Holding): Row => ({
     key: ++seq.current,
@@ -39,6 +45,8 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
     since: h?.since ?? '',
     adding: false,
     added: '',
+    manual: h ? manualNavs[h.fundId] ?? [] : [],
+    editingNav: false,
   });
   const [rows, setRows] = useState<Row[]>(() => (holdings.length ? holdings.map(newRow) : [newRow()]));
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +77,7 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
   function save() {
     const bad = new Set<number>();
     const out: Holding[] = [];
+    const manualOut: ManualNavs = {};
     let msg: string | null = null;
     const seen = new Set<string>();
     for (const r of rows) {
@@ -82,12 +91,13 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
       if (!(inv >= 0)) { bad.add(r.key); msg ??= "Amount invested can't be negative."; continue; }
       if (r.since && (!/^\d{4}-\d{2}-\d{2}$/.test(r.since) || r.since > today)) { bad.add(r.key); msg ??= "First invested date can't be in the future."; continue; }
       seen.add(r.fundId);
+      if (r.manual.length) manualOut[r.fundId] = r.manual;
       const prior = holdings.find(h => h.fundId === r.fundId);
       out.push({ fundId: r.fundId, name: fund?.name ?? prior?.name ?? '', units: u, invested: inv, ...(r.since ? { since: r.since } : {}) });
     }
     setBadKeys(bad);
     if (msg) { setError(msg); return; }
-    onSave(out);
+    onSave(out, manualOut);
   }
 
   return (
@@ -106,7 +116,9 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
             const fund = byId.get(r.fundId);
             const u = parseFloat(r.units) || 0;
             const inv = parseFloat(r.invested) || 0;
-            const value = fund ? u * fund.nav : 0;
+            const lastManual = r.manual[r.manual.length - 1];
+            const nav = lastManual?.nav ?? fund?.nav ?? 0;
+            const value = u * nav;
             return (
               <section key={r.key} className={`row ${badKeys.has(r.key) ? 'row-bad' : ''}`}>
                 <div className="row-top">
@@ -115,13 +127,13 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
                     funds={funds}
                     selected={fund ?? null}
                     fallbackName={holdings.find(h => h.fundId === r.fundId)?.name}
-                    onPick={f => update(r.key, { fundId: f?.id ?? '' })}
+                    onPick={f => update(r.key, { fundId: f?.id ?? '', manual: [], editingNav: false })}
                     nextFieldId={`units-${r.key}`}
                     onTextChange={text => update(r.key, { text })}
                   />
                   <button type="button" className="text-btn muted-btn" onClick={() => remove(r.key)}>Remove</button>
                 </div>
-                {fund && <div className="row-meta">{fund.category} · NAV {fund.nav.toFixed(4)}</div>}
+                {fund && <div className="row-meta">{fund.category} · NAV {nav.toFixed(4)}{lastManual && <span className="chip chip-manual" title="NAV you entered">M</span>}</div>}
                 <div className="fields">
                   <label>
                     <span>Units</span>
@@ -158,6 +170,25 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
                     + Add more units
                   </button>
                 ))}
+                {fund && fund.date < today && (r.editingNav ? (
+                  <NavEditor
+                    idPrefix={`nav-${r.key}`}
+                    fund={fund}
+                    entries={r.manual}
+                    today={today}
+                    onSave={e => update(r.key, {
+                      manual: [...r.manual.filter(x => x.date !== e.date), e].sort((a, b) => a.date.localeCompare(b.date)),
+                      editingNav: false,
+                      added: 'NAV added. Tap Save to keep it.',
+                    })}
+                    onRemove={date => update(r.key, { manual: r.manual.filter(x => x.date !== date) })}
+                    onClose={() => update(r.key, { editingNav: false })}
+                  />
+                ) : (
+                  <button type="button" className="secondary add-more" onClick={() => update(r.key, { editingNav: true, added: '' })}>
+                    Edit NAV
+                  </button>
+                ))}
               </section>
             );
           })}
@@ -169,6 +200,7 @@ export default function HoldingsEditor({ funds, holdings, loadingFunds, onSave, 
           <p><b>Invested:</b> the total you've paid into that fund, including any front-end load.</p>
           <p><b>Bought more:</b> tap <b>+ Add more units</b> on the fund and enter the units and amount from your confirmation. Keeper adds them to the totals.</p>
           <p><b>Dividend paid as units:</b> use <b>+ Add more units</b> with the amount left at 0.</p>
+          <p><b>Edit NAV:</b> for a fund MUFAP hasn't updated yet. Enter the NAV for a date, and it counts like a published NAV until MUFAP catches up.</p>
           <p><b>First invested:</b> the date of your first purchase. The profit/loss chart then starts from that date instead of assuming you held the fund for a full year.</p>
         </div>
         <button type="button" className="primary wide" onClick={save}>Save holdings</button>
